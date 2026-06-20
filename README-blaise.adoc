@@ -26,34 +26,126 @@ over HTTP on localhost.  It:
 
 == Architecture
 
-The domain core (model, link graph, tag index, change orchestration, link/tag
-extraction) is pure Pascal and depends only on a set of port interfaces.  The
-adapters implement those ports with concrete technology.  The core is covered by
-unit tests that run entirely in memory with no server, filesystem, or external
-process.
+Luhmann is built as a *hexagonal* (ports and adapters) application.  The
+guiding idea is that the interesting logic of the program should not know, or
+care, how it talks to the outside world.  So the code is divided into three
+concentric regions, and dependencies only ever point *inwards*:
+
+....
+            driving adapters                 driven adapters
+          (things that call us)            (things we call out to)
+     ┌───────────────────────┐        ┌───────────────────────────┐
+     │  HTTP request router   │        │  filesystem │ asciidoctor │
+     │  (luhmann.app)         │        │  search idx │ editor      │
+     │  composition root      │        │  watcher    │ logger      │
+     │  (luhmann)             │        │  (luhmann.adapters, …)    │
+     └───────────┬────────────┘        └─────────────┬─────────────┘
+                 │ calls driving ports               │ implements driven ports
+                 ▼                                    ▲
+        ┌────────────────────────── DOMAIN CORE ──────────────────┐
+        │  link graph · tag index · change orchestration ·         │
+        │  AsciiDoc extractors · model                             │
+        │  (luhmann.graph, .tagindex, .changeproc, .extract, …)    │
+        │  depends on NOTHING outside itself except the ports      │
+        └──────────────────────────────────────────────────────────┘
+....
+
+=== The domain core (the hexagon)
+
+The core holds everything that makes Luhmann a Zettelkasten: the directed
+*link graph* (and the backlinks derived from it), the *tag index* with its
+catch-all bucket, the *change orchestration* that ties rendering, indexing and
+graph maintenance together, and the pure *AsciiDoc scanners* that pull titles,
+tags and cross-references out of note source.
+
+This region is plain Pascal.  It performs no I/O, spawns no processes, and
+imports no framework, socket or filesystem unit.  Everything it needs from the
+outside world it expresses as a *port* — a Pascal interface it depends on but
+does not implement.  Because of that, the whole core can be exercised with
+in-memory fakes and no running infrastructure, which is exactly what the unit
+tests under `src/test/pascal` do.
+
+=== Ports
+
+A *driven* (outbound) port is an interface the core needs the outside world to
+satisfy.  These live in `luhmann.ports`:
 
 [cols="1,3", options="header"]
 |===
-| Unit | Role
+| Port | What the core asks of the world
 
-| `luhmann.model`      | Domain records: note, search hit, hit list
-| `luhmann.ports`      | Port interfaces + the `TPorts` adapter registry
-| `luhmann.graph`      | In-memory link graph (forward + backlink adjacency)
-| `luhmann.tagindex`   | Tag inverted index with catch-all
-| `luhmann.extract`    | Pure AsciiDoc title/tag/xref scanners
-| `luhmann.changeproc` | Render -> index -> graph/tag orchestration (the core)
-| `luhmann.adapters`   | Filesystem repo, asciidoctor renderer, editor, logger
-| `luhmann.search`     | Minimal in-memory full-text index (Lucene stand-in)
-| `luhmann.watch`      | Polling directory watcher (mtime diffing)
-| `luhmann.config`     | Defaults + `.luhmann.ini` overrides
-| `luhmann.http`       | HTTP/1.1 server + WebSocket reload push
-| `luhmann.crypto`     | SHA-1 + Base64 (for the WebSocket handshake)
-| `luhmann.json`       | JSON writer (for the graph/API endpoints)
-| `luhmann.chrome`     | Templated HTML page assembly
-| `luhmann.app`        | The request router (driving adapter)
-| `luhmann.libc`       | libc/socket FFI bindings
-| `luhmann.util`       | String/path helpers
-| `luhmann`            | Composition root + event loop (program entry)
+| `INoteRepository`  | enumerate note ids, read a note's source, give its path/mtime
+| `IAsciiDocRenderer`| turn AsciiDoc source into HTML (single, or a batch)
+| `ISearchIndex`     | upsert / remove / query the full-text index
+| `IReloadNotifier`  | tell connected browsers to reload
+| `IEditorLauncher`  | open a note in an external editor
+| `ILogger`          | record a diagnostic line
+|===
+
+A *driving* (inbound) port is the core's own surface, called from outside — here
+the HTTP router calls into `TChangeProcessor` (the orchestrator) to ask for a
+page's HTML, its backlinks, its tags, the graph neighbourhood, and so on.
+
+=== Adapters
+
+An *adapter* is a concrete implementation of a port, and is the only place a
+specific technology appears.  Swapping a technology is a matter of writing a new
+adapter; the core never changes.
+
+[cols="1,1,2", options="header"]
+|===
+| Driven port | Default adapter | How it works
+
+| `INoteRepository`   | `TFilesystemNoteRepository` | shells out to `find`, reads files
+| `IAsciiDocRenderer` | `TAsciidoctorRenderer`      | shells out to `asciidoctor` (parallel batch on build)
+| `ISearchIndex`      | `TInMemorySearchIndex`      | inverted index, a minimal Lucene stand-in
+| `IReloadNotifier`   | server WebSocket broadcast  | pushes a `reload` frame
+| `IEditorLauncher`   | `TProcessEditorLauncher`    | spawns the configured editor
+| `ILogger`           | `TConsoleLogger`            | timestamped lines to stderr
+|===
+
+=== The composition root
+
+`luhmann.pas` (the `program`) is the only place that knows *both* the core and
+the concrete adapters.  It constructs each adapter, places it in a single
+`TPorts` registry object, hands that registry to the core, performs the initial
+build, and then runs the event loop (non-blocking HTTP serving interleaved with
+filesystem polling).  Nothing else wires concrete things to interfaces.
+
+=== Why this shape
+
+* *Testability* — the core is tested without a socket, a file, or an
+  `asciidoctor` process, so its tests are fast and deterministic.
+* *Substitutability* — the renderer could become a native parser, the search
+  index a real Lucene-style store, the watcher an `inotify` adapter, all without
+  touching domain logic.
+* *Clarity* — every dependency on the messy outside world is named and lives at
+  the edge, never buried in the middle.
+
+=== Unit map
+
+[cols="1,3", options="header"]
+|===
+| Unit | Role | Region
+
+| `luhmann.model`      | Domain records: note, search hit, hit list | core
+| `luhmann.graph`      | Link graph (forward + backlink adjacency)  | core
+| `luhmann.tagindex`   | Tag inverted index with catch-all          | core
+| `luhmann.extract`    | AsciiDoc title/tag/xref scanners           | core
+| `luhmann.changeproc` | Render -> index -> graph/tag orchestration | core
+| `luhmann.ports`      | Port interfaces + the `TPorts` registry    | boundary
+| `luhmann.adapters`   | Filesystem repo, renderer, editor, logger  | adapter
+| `luhmann.search`     | In-memory full-text index                  | adapter
+| `luhmann.watch`      | Polling directory watcher (mtime diffing)  | adapter
+| `luhmann.config`     | Defaults + `.luhmann.ini` overrides        | adapter
+| `luhmann.http`       | HTTP/1.1 server + WebSocket reload push     | adapter
+| `luhmann.crypto`     | SHA-1 + Base64 (WebSocket handshake)        | adapter
+| `luhmann.json`       | JSON writer (graph/API endpoints)           | adapter
+| `luhmann.chrome`     | Templated HTML page assembly                | adapter
+| `luhmann.app`        | The HTTP request router (driving adapter)   | adapter
+| `luhmann.libc`       | libc/socket FFI bindings                    | adapter
+| `luhmann.util`       | String/path helpers                         | shared
+| `luhmann`            | Composition root + event loop (entry)       | root
 |===
 
 New, generally-useful units (`luhmann.http`, `luhmann.json`, `luhmann.crypto`,
@@ -90,17 +182,90 @@ point.  Open http://localhost:2022 to view the Zettelkasten.
 The static-asset directory is resolved as: `$LUHMANN_PUBLIC`, else `public`
 beside the binary (the PasBuild layout), else `src/main/resources/public`.
 
-=== Configuration
+== Configuration
 
-An optional `.luhmann.ini` in the notes directory overrides the defaults:
+Configuration is optional — Luhmann runs with sensible defaults.  To override
+them, place a file named `.luhmann.ini` *inside your notes directory* (the same
+directory you pass on the command line), not next to the binary.
+
+[IMPORTANT]
+====
+The config file must live at `<notes-dir>/.luhmann.ini`.  A file placed
+anywhere else (for example beside the executable) is silently ignored.  At
+startup Luhmann prints which config file it loaded, or reports that none was
+found and defaults are in use, so you can confirm it was picked up:
+
+[source]
+----
+Luhmann starting
+  root:        /home/me/Documents/second-brain
+  config:      /home/me/Documents/second-brain/.luhmann.ini
+  port:        2022
+  render-jobs: 12
+  public:      target/public
+----
+====
+
+The file is a simple `key = value` format.  Blank lines and lines beginning
+with `#` or `;` are ignored.  Every key is optional; unspecified keys keep their
+default.
 
 [source,ini]
 ----
-port = 2022
-editor = nvim-qt
+# ~/Documents/second-brain/.luhmann.ini
+port            = 2022
+render-jobs     = 12
+editor          = nvim-qt
 catch-all-label = unfiled
-asciidoctor = /usr/bin/asciidoctor
+asciidoctor     = /usr/bin/asciidoctor
+luhmann-dir     = /home/me/Documents/second-brain/.luhmann
 ----
+
+[cols="1,1,1,3", options="header"]
+|===
+| Key | Type | Default | Meaning
+
+| `port`
+| integer
+| `2022`
+| TCP port the server listens on (localhost only, plain HTTP).
+
+| `render-jobs`
+| integer
+| `8`
+| How many `asciidoctor` processes to run in parallel during the initial
+  build.  Higher values speed up start-up on multi-core machines, with
+  diminishing returns past the physical core count.  See <<startup-performance>>.
+
+| `editor`
+| string
+| _(unset)_
+| Command used by the `e` shortcut / `/api/edit` to open a note, e.g.
+  `nvim-qt` or `code -g`.  The note's path is appended as the final argument.
+  If unset, the editor feature is disabled.
+
+| `catch-all-label`
+| string
+| `unfiled`
+| Tag applied to notes that declare no `:tags:`, so every note is reachable
+  from `/tags`.
+
+| `asciidoctor`
+| string
+| `/usr/bin/asciidoctor`
+| Path to the `asciidoctor` binary used for rendering.
+
+| `luhmann-dir`
+| string
+| `<notes-dir>/.luhmann`
+| Where Luhmann keeps derived files (the render temp dir, etc.).  This
+  directory is excluded from note enumeration.
+|===
+
+The static-asset directory (CSS/JS/graph page) is resolved separately, in this
+order: the `LUHMANN_PUBLIC` environment variable, else `public` beside the
+binary (the PasBuild layout, `target/public`), else `src/main/resources/public`
+for in-repo development runs.
 
 == Tags
 
@@ -116,6 +281,30 @@ An apple is a pome fruit ...
 
 Notes with no tags are filed under the catch-all label (default `unfiled`), so
 every note is reachable from `/tags`.
+
+[[startup-performance]]
+== Startup performance
+
+At start-up Luhmann renders every note once by shelling out to `asciidoctor`.
+That cost is dominated by process-startup latency (~150 ms per note), so the
+build renders notes *in parallel*: up to `render-jobs` `asciidoctor` processes
+run at a time, and the result is identical to a serial render.
+
+Measured on an 86-note corpus (16-core machine):
+
+[cols="1,1,1", options="header"]
+|===
+| `render-jobs` | Build time | Speedup
+
+| 1 (serial)   | ~13.0 s | 1.0x
+| 8 (default)  | ~3.0 s  | 4.3x
+| 12           | ~2.3 s  | 5.6x
+| 16           | ~2.1 s  | 6.3x
+|===
+
+Set `render-jobs` to roughly your physical core count.  Beyond that the gains
+flatten (the remaining time is per-process startup plus the serial indexing
+phase).  The build prints its own timing on the `Build complete` line.
 
 == Tests
 
