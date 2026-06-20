@@ -1,0 +1,145 @@
+= Luhmann Architecture
+:icons: font
+:source-highlighter: rouge
+
+Luhmann is built as a *hexagonal* (ports and adapters) application.  The
+guiding idea is that the interesting logic of the program should not know, or
+care, how it talks to the outside world.  So the code is divided into three
+concentric regions, and dependencies only ever point *inwards*:
+
+....
+            driving adapters                 driven adapters
+          (things that call us)            (things we call out to)
+     ┌───────────────────────┐        ┌───────────────────────────┐
+     │  HTTP request router   │        │  filesystem │ asciidoctor │
+     │  (luhmann.app)         │        │  search idx │ editor      │
+     │  composition root      │        │  watcher    │ logger      │
+     │  (luhmann)             │        │  (luhmann.adapters, …)    │
+     └───────────┬────────────┘        └─────────────┬─────────────┘
+                 │ calls driving ports               │ implements driven ports
+                 ▼                                    ▲
+        ┌────────────────────────── DOMAIN CORE ──────────────────┐
+        │  link graph · tag index · change orchestration ·         │
+        │  AsciiDoc extractors · model                             │
+        │  (luhmann.graph, .tagindex, .changeproc, .extract, …)    │
+        │  depends on NOTHING outside itself except the ports      │
+        └──────────────────────────────────────────────────────────┘
+....
+
+== The domain core (the hexagon)
+
+The core holds everything that makes Luhmann a Zettelkasten: the directed
+*link graph* (and the backlinks derived from it), the *tag index* with its
+catch-all bucket, the *change orchestration* that ties rendering, indexing and
+graph maintenance together, and the pure *AsciiDoc scanners* that pull titles,
+tags and cross-references out of note source.
+
+This region is plain Pascal.  It performs no I/O, spawns no processes, and
+imports no framework, socket or filesystem unit.  Everything it needs from the
+outside world it expresses as a *port* — a Pascal interface it depends on but
+does not implement.  Because of that, the whole core can be exercised with
+in-memory fakes and no running infrastructure, which is exactly what the unit
+tests under `src/test/pascal` do.
+
+== Ports
+
+A *driven* (outbound) port is an interface the core needs the outside world to
+satisfy.  These live in `luhmann.ports`:
+
+[cols="1,3", options="header"]
+|===
+| Port | What the core asks of the world
+
+| `INoteRepository`  | enumerate note ids, read a note's source, give its path/mtime
+| `IAsciiDocRenderer`| turn AsciiDoc source into HTML (single, or a batch)
+| `ISearchIndex`     | upsert / remove / query the full-text index
+| `IReloadNotifier`  | tell connected browsers to reload
+| `IEditorLauncher`  | open a note in an external editor
+| `ILogger`          | record a diagnostic line
+|===
+
+A *driving* (inbound) port is the core's own surface, called from outside — here
+the HTTP router calls into `TChangeProcessor` (the orchestrator) to ask for a
+page's HTML, its backlinks, its tags, the graph neighbourhood, and so on.
+
+== Adapters
+
+An *adapter* is a concrete implementation of a port, and is the only place a
+specific technology appears.  Swapping a technology is a matter of writing a new
+adapter; the core never changes.
+
+[cols="1,1,2", options="header"]
+|===
+| Driven port | Default adapter | How it works
+
+| `INoteRepository`   | `TFilesystemNoteRepository` | shells out to `find`, reads files
+| `IAsciiDocRenderer` | `TAsciidoctorRenderer`      | shells out to `asciidoctor` (parallel batch on build)
+| `ISearchIndex`      | `TInMemorySearchIndex`      | inverted index, a minimal Lucene stand-in
+| `IReloadNotifier`   | server WebSocket broadcast  | pushes a `reload` frame
+| `IEditorLauncher`   | `TProcessEditorLauncher`    | spawns the configured editor
+| `ILogger`           | `TConsoleLogger`            | timestamped lines to stderr
+|===
+
+== The composition root
+
+`luhmann.pas` (the `program`) is the only place that knows *both* the core and
+the concrete adapters.  It constructs each adapter, places it in a single
+`TPorts` registry object, hands that registry to the core, performs the initial
+build, and then runs the event loop (non-blocking HTTP serving interleaved with
+filesystem polling).  Nothing else wires concrete things to interfaces.
+
+== Why this shape
+
+* *Testability* — the core is tested without a socket, a file, or an
+  `asciidoctor` process, so its tests are fast and deterministic.
+* *Substitutability* — the renderer could become a native parser, the search
+  index a real Lucene-style store, the watcher an `inotify` adapter, all without
+  touching domain logic.
+* *Clarity* — every dependency on the messy outside world is named and lives at
+  the edge, never buried in the middle.
+
+== Backlinks: how the graph stays correct
+
+A forward link is one you write in a note (`xref:fruit/apple.adoc[...]`); a
+backlink is the reverse view (which notes point *at* this one).  The link graph
+keeps both directions as mirror maps — `out: note -> targets` and
+`in: note -> sources` — and updates them together every time a note is
+(re)indexed.  Recording a note's forward links therefore *is* the act of
+maintaining its targets' backlinks, so a backlink lookup is a single map read.
+
+Edges are stored as note-id strings, never as object references.  This keeps the
+inherently cyclic backlink graph (A links B, B links A) free of reference
+cycles, which matters under Blaise's automatic reference counting.
+
+== Unit map
+
+[cols="1,3,1", options="header"]
+|===
+| Unit | Role | Region
+
+| `luhmann.model`      | Domain records: note, search hit, hit list | core
+| `luhmann.graph`      | Link graph (forward + backlink adjacency)  | core
+| `luhmann.tagindex`   | Tag inverted index with catch-all          | core
+| `luhmann.extract`    | AsciiDoc title/tag/xref scanners           | core
+| `luhmann.changeproc` | Render -> index -> graph/tag orchestration | core
+| `luhmann.ports`      | Port interfaces + the `TPorts` registry    | boundary
+| `luhmann.adapters`   | Filesystem repo, renderer, editor, logger  | adapter
+| `luhmann.search`     | In-memory full-text index                  | adapter
+| `luhmann.watch`      | Polling directory watcher (mtime diffing)  | adapter
+| `luhmann.config`     | Defaults + `.luhmann.ini` overrides        | adapter
+| `luhmann.http`       | HTTP/1.1 server + WebSocket reload push     | adapter
+| `luhmann.crypto`     | SHA-1 + Base64 (WebSocket handshake)        | adapter
+| `luhmann.json`       | JSON writer (graph/API endpoints)           | adapter
+| `luhmann.chrome`     | Templated HTML page assembly                | adapter
+| `luhmann.app`        | The HTTP request router (driving adapter)   | adapter
+| `luhmann.libc`       | libc/socket FFI bindings                    | adapter
+| `luhmann.util`       | String/path helpers                         | shared
+| `luhmann`            | Composition root + event loop (entry)       | root
+|===
+
+New, generally-useful units (`luhmann.http`, `luhmann.json`, `luhmann.crypto`,
+the socket bindings in `luhmann.libc`, and the polling watcher) are candidates
+to move into the Blaise standard library as a follow-up.
+
+For the full design rationale and the Blaise-specific implementation notes, see
+link:java-port-design.adoc[java-port-design.adoc].

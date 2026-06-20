@@ -1,156 +1,144 @@
 = Luhmann (Blaise Pascal port)
 :icons: font
+:toc: macro
+:toclevels: 2
 
-This branch reimplements Luhmann in the
-https://github.com/graemeg/blaise[Blaise] Pascal language, built with
-https://github.com/graemeg/pasbuild[PasBuild].  It follows the hexagonal
-(ports and adapters) architecture described in
-link:docs/java-port-design.adoc[docs/java-port-design.adoc] and adds three
-features over the original Clojure implementation: automatic backlinks,
-tag-based organisation with a catch-all for untagged notes, and an
-Obsidian-style interactive note graph.
+Luhmann turns a directory of AsciiDoc files into a personal
+https://en.wikipedia.org/wiki/Zettelkasten[Zettelkasten] — a linked web of
+notes — served over plain HTTP on localhost.  You write notes in your own
+editor; Luhmann renders them, connects them, indexes them, and keeps the
+browser in sync as you work.
 
-== What it does
+This is a reimplementation in the https://github.com/graemeg/blaise[Blaise]
+Pascal language, built with https://github.com/graemeg/pasbuild[PasBuild] and
+structured as a hexagonal (ports and adapters) application.  Over the original
+Clojure version it adds automatic backlinks, tag-based organisation, an
+interactive note graph, a broken-links report, and a JSON API for editor
+integration.
 
-Luhmann turns a directory of AsciiDoc files into a personal Zettelkasten served
-over HTTP on localhost.  It:
+toc::[]
 
-* renders each `.adoc` note to HTML (via the `asciidoctor` binary) and serves it
-  wrapped in a common UI chrome;
-* derives a link graph from the note sources and shows *backlinks* on every page;
-* organises notes by in-note `:tags:` (untagged notes fall under a configurable
-  catch-all label), browsable at `/tags`;
-* offers a full-text search over all notes;
-* renders an interactive graph at `/graph` with click-through navigation;
-* live-reloads the browser over a WebSocket whenever a note changes on disk.
+== Features
+
+Notes and rendering::
+* Renders each `.adoc` note to HTML via the `asciidoctor` binary and serves it
+  wrapped in a clean, consistent UI.
+* *Parallel build* — renders notes concurrently at start-up, so even a large
+  Zettelkasten is ready in a second or two (see <<startup-performance>>).
+
+Connections::
+* *Automatic backlinks* — you only ever write forward links (`xref:`); Luhmann
+  computes the reverse direction and shows, on every note, which other notes
+  link to it.  No manual maintenance.
+* *Interactive note graph* (`/graph`) — an Obsidian-style force-directed map of
+  your notes.  Click a node to open that note; double-click to re-centre the
+  graph on it; the browser Back button returns you to the graph.
+* *Broken-links report* (`/broken`) — lists every cross-reference whose target
+  note does not exist, so dangling links are easy to find and fix.
+
+Organisation and search::
+* *Tags* — organise notes with an in-note `:tags:` attribute rather than by
+  folder; untagged notes fall under a configurable catch-all label.  Browse all
+  tags at `/tags`.
+* *Full-text search* — a built-in index over every note's title and body, with
+  highlighted result snippets.
+
+Workflow::
+* *Live reload* — edit a note in any editor and save; the browser refreshes
+  itself automatically over a WebSocket.  A page also re-syncs when you switch
+  back to its tab, so listing pages never go stale.
+* *Launch your editor from the browser* — press `e` on any note (or call the
+  edit API) and Luhmann opens that note in your configured editor, GUI or
+  terminal.  See link:docs/configuration.adoc#editor-integration[editor
+  integration].
+* *Keyboard shortcuts* — `/` to search, `e` to edit, `g` to open the graph for
+  the current note (see <<keyboard-shortcuts>>).
+
+Integration::
+* *Built-in JSON REST API* — query backlinks, the link graph, and tags, and
+  trigger an editor launch, from your own tools or an editor plugin.  See
+  <<rest-api>>.
+
+Local-first and self-contained::
+* Runs as a single process on `localhost`, no database, no cloud, no account.
+* The graph library is vendored, so the graph works fully offline.
+* No external services beyond the `asciidoctor` binary used for rendering.
+
+[[rest-api]]
+== REST API
+
+All endpoints are `GET` and take their input from query parameters.  The graph
+and tag endpoints return JSON; the rest return HTML pages.
+
+[cols="2,1,3", options="header"]
+|===
+| Endpoint | Returns | Description
+
+| `/`, `/<path>.html`
+| HTML
+| A rendered note page (with chrome, tags and backlinks). `/` serves
+  `index.adoc`.
+
+| `/search?q=<query>`
+| HTML
+| Full-text search results page.
+
+| `/graph`
+| HTML
+| The interactive graph page (optionally `?note=<id>` to centre it).
+
+| `/tags`, `/tags/<tag>`
+| HTML
+| All tags with counts, or the notes carrying one tag.
+
+| `/broken`
+| HTML
+| The broken cross-references report.
+
+| `/api/backlinks?note=<id>`
+| JSON
+| Notes that link to `<id>`: `[ { "note": "...", "title": "..." }, ... ]`.
+
+| `/api/graph?note=<id>&depth=<n>`
+| JSON
+| The neighbourhood subgraph around `<id>` (nodes + edges).
+
+| `/api/graph/all`
+| JSON
+| The whole-corpus graph (nodes + edges).
+
+| `/api/tags`
+| JSON
+| Every tag with its note count: `[ { "tag": "...", "count": N }, ... ]`.
+
+| `/api/edit?note=<id>`
+| text
+| Launch the configured editor on `<id>`
+  (see link:docs/configuration.adoc#editor-integration[editor integration]).
+
+| `/ws`
+| WebSocket
+| Live-reload channel; the server pushes a `reload` frame on any change.
+|===
+
+A note id is a path relative to the notes directory, e.g.
+`fruit/apple.adoc`.
 
 == Architecture
 
-Luhmann is built as a *hexagonal* (ports and adapters) application.  The
-guiding idea is that the interesting logic of the program should not know, or
-care, how it talks to the outside world.  So the code is divided into three
-concentric regions, and dependencies only ever point *inwards*:
+Luhmann is a *hexagonal* (ports and adapters) application.  A framework-free
+*domain core* — the link graph, tag index, change orchestration and AsciiDoc
+extractors — depends only on a set of port interfaces and knows nothing of
+HTTP, the filesystem or `asciidoctor`.  *Adapters* implement those ports with
+concrete technology, and the composition root wires them together.  This keeps
+the core fast to test (in-memory, no infrastructure) and every technology
+choice swappable.
 
-....
-            driving adapters                 driven adapters
-          (things that call us)            (things we call out to)
-     ┌───────────────────────┐        ┌───────────────────────────┐
-     │  HTTP request router   │        │  filesystem │ asciidoctor │
-     │  (luhmann.app)         │        │  search idx │ editor      │
-     │  composition root      │        │  watcher    │ logger      │
-     │  (luhmann)             │        │  (luhmann.adapters, …)    │
-     └───────────┬────────────┘        └─────────────┬─────────────┘
-                 │ calls driving ports               │ implements driven ports
-                 ▼                                    ▲
-        ┌────────────────────────── DOMAIN CORE ──────────────────┐
-        │  link graph · tag index · change orchestration ·         │
-        │  AsciiDoc extractors · model                             │
-        │  (luhmann.graph, .tagindex, .changeproc, .extract, …)    │
-        │  depends on NOTHING outside itself except the ports      │
-        └──────────────────────────────────────────────────────────┘
-....
-
-=== The domain core (the hexagon)
-
-The core holds everything that makes Luhmann a Zettelkasten: the directed
-*link graph* (and the backlinks derived from it), the *tag index* with its
-catch-all bucket, the *change orchestration* that ties rendering, indexing and
-graph maintenance together, and the pure *AsciiDoc scanners* that pull titles,
-tags and cross-references out of note source.
-
-This region is plain Pascal.  It performs no I/O, spawns no processes, and
-imports no framework, socket or filesystem unit.  Everything it needs from the
-outside world it expresses as a *port* — a Pascal interface it depends on but
-does not implement.  Because of that, the whole core can be exercised with
-in-memory fakes and no running infrastructure, which is exactly what the unit
-tests under `src/test/pascal` do.
-
-=== Ports
-
-A *driven* (outbound) port is an interface the core needs the outside world to
-satisfy.  These live in `luhmann.ports`:
-
-[cols="1,3", options="header"]
-|===
-| Port | What the core asks of the world
-
-| `INoteRepository`  | enumerate note ids, read a note's source, give its path/mtime
-| `IAsciiDocRenderer`| turn AsciiDoc source into HTML (single, or a batch)
-| `ISearchIndex`     | upsert / remove / query the full-text index
-| `IReloadNotifier`  | tell connected browsers to reload
-| `IEditorLauncher`  | open a note in an external editor
-| `ILogger`          | record a diagnostic line
-|===
-
-A *driving* (inbound) port is the core's own surface, called from outside — here
-the HTTP router calls into `TChangeProcessor` (the orchestrator) to ask for a
-page's HTML, its backlinks, its tags, the graph neighbourhood, and so on.
-
-=== Adapters
-
-An *adapter* is a concrete implementation of a port, and is the only place a
-specific technology appears.  Swapping a technology is a matter of writing a new
-adapter; the core never changes.
-
-[cols="1,1,2", options="header"]
-|===
-| Driven port | Default adapter | How it works
-
-| `INoteRepository`   | `TFilesystemNoteRepository` | shells out to `find`, reads files
-| `IAsciiDocRenderer` | `TAsciidoctorRenderer`      | shells out to `asciidoctor` (parallel batch on build)
-| `ISearchIndex`      | `TInMemorySearchIndex`      | inverted index, a minimal Lucene stand-in
-| `IReloadNotifier`   | server WebSocket broadcast  | pushes a `reload` frame
-| `IEditorLauncher`   | `TProcessEditorLauncher`    | spawns the configured editor
-| `ILogger`           | `TConsoleLogger`            | timestamped lines to stderr
-|===
-
-=== The composition root
-
-`luhmann.pas` (the `program`) is the only place that knows *both* the core and
-the concrete adapters.  It constructs each adapter, places it in a single
-`TPorts` registry object, hands that registry to the core, performs the initial
-build, and then runs the event loop (non-blocking HTTP serving interleaved with
-filesystem polling).  Nothing else wires concrete things to interfaces.
-
-=== Why this shape
-
-* *Testability* — the core is tested without a socket, a file, or an
-  `asciidoctor` process, so its tests are fast and deterministic.
-* *Substitutability* — the renderer could become a native parser, the search
-  index a real Lucene-style store, the watcher an `inotify` adapter, all without
-  touching domain logic.
-* *Clarity* — every dependency on the messy outside world is named and lives at
-  the edge, never buried in the middle.
-
-=== Unit map
-
-[cols="1,3", options="header"]
-|===
-| Unit | Role | Region
-
-| `luhmann.model`      | Domain records: note, search hit, hit list | core
-| `luhmann.graph`      | Link graph (forward + backlink adjacency)  | core
-| `luhmann.tagindex`   | Tag inverted index with catch-all          | core
-| `luhmann.extract`    | AsciiDoc title/tag/xref scanners           | core
-| `luhmann.changeproc` | Render -> index -> graph/tag orchestration | core
-| `luhmann.ports`      | Port interfaces + the `TPorts` registry    | boundary
-| `luhmann.adapters`   | Filesystem repo, renderer, editor, logger  | adapter
-| `luhmann.search`     | In-memory full-text index                  | adapter
-| `luhmann.watch`      | Polling directory watcher (mtime diffing)  | adapter
-| `luhmann.config`     | Defaults + `.luhmann.ini` overrides        | adapter
-| `luhmann.http`       | HTTP/1.1 server + WebSocket reload push     | adapter
-| `luhmann.crypto`     | SHA-1 + Base64 (WebSocket handshake)        | adapter
-| `luhmann.json`       | JSON writer (graph/API endpoints)           | adapter
-| `luhmann.chrome`     | Templated HTML page assembly                | adapter
-| `luhmann.app`        | The HTTP request router (driving adapter)   | adapter
-| `luhmann.libc`       | libc/socket FFI bindings                    | adapter
-| `luhmann.util`       | String/path helpers                         | shared
-| `luhmann`            | Composition root + event loop (entry)       | root
-|===
-
-New, generally-useful units (`luhmann.http`, `luhmann.json`, `luhmann.crypto`,
-the socket bindings in `luhmann.libc`, and the polling watcher) are candidates
-to move into the Blaise standard library as a follow-up.
+For the full picture — the ports and adapters, the unit map, how backlinks are
+maintained, and why this shape — see link:docs/architecture.adoc[the
+architecture guide].  The original design rationale and Blaise-specific
+implementation notes are in link:docs/java-port-design.adoc[the design
+document].
 
 == Building
 
@@ -184,145 +172,26 @@ beside the binary (the PasBuild layout), else `src/main/resources/public`.
 
 == Configuration
 
-Configuration is optional — Luhmann runs with sensible defaults.  To override
-them, place a file named `.luhmann.ini` *inside your notes directory* (the same
-directory you pass on the command line), not next to the binary.
-
-[IMPORTANT]
-====
-The config file must live at `<notes-dir>/.luhmann.ini`.  A file placed
-anywhere else (for example beside the executable) is silently ignored.  At
-startup Luhmann prints which config file it loaded, or reports that none was
-found and defaults are in use, so you can confirm it was picked up:
-
-[source]
-----
-Luhmann starting
-  root:        /home/me/Documents/second-brain
-  config:      /home/me/Documents/second-brain/.luhmann.ini
-  port:        2022
-  render-jobs: 12
-  public:      target/public
-----
-====
-
-The file is a simple `key = value` format.  Blank lines and lines beginning
-with `#` or `;` are ignored.  Every key is optional; unspecified keys keep their
-default.
+Luhmann runs with sensible defaults; everything is optional.  To override a
+setting, create a `.luhmann.ini` file *inside your notes directory* (the same
+directory you pass on the command line):
 
 [source,ini]
 ----
 # ~/Documents/second-brain/.luhmann.ini
-port            = 2022
-render-jobs     = 12
-editor          = nvim-qt
-catch-all-label = unfiled
-asciidoctor     = /usr/bin/asciidoctor
-luhmann-dir     = /home/me/Documents/second-brain/.luhmann
+port        = 2022
+render-jobs = 12
+editor      = gnome-terminal -- mcedit
 ----
 
-[cols="1,1,1,3", options="header"]
-|===
-| Key | Type | Default | Meaning
+Available keys cover the port, the number of parallel render jobs, the editor
+command (GUI or terminal), the catch-all tag label, and the `asciidoctor` path.
+At startup Luhmann prints which config file it loaded so you can confirm it was
+picked up.
 
-| `port`
-| integer
-| `2022`
-| TCP port the server listens on (localhost only, plain HTTP).
-
-| `render-jobs`
-| integer
-| `8`
-| How many `asciidoctor` processes to run in parallel during the initial
-  build.  Higher values speed up start-up on multi-core machines, with
-  diminishing returns past the physical core count.  See <<startup-performance>>.
-
-| `editor`
-| string
-| _(unset)_
-| Command used by the `e` shortcut / `/api/edit` to open a note, e.g.
-  `nvim-qt` or `code -g`.  The note's path is appended as the final argument.
-  If unset, the editor feature is disabled.
-
-| `catch-all-label`
-| string
-| `unfiled`
-| Tag applied to notes that declare no `:tags:`, so every note is reachable
-  from `/tags`.
-
-| `asciidoctor`
-| string
-| `/usr/bin/asciidoctor`
-| Path to the `asciidoctor` binary used for rendering.
-
-| `luhmann-dir`
-| string
-| `<notes-dir>/.luhmann`
-| Where Luhmann keeps derived files (the render temp dir, etc.).  This
-  directory is excluded from note enumeration.
-|===
-
-The static-asset directory (CSS/JS/graph page) is resolved separately, in this
-order: the `LUHMANN_PUBLIC` environment variable, else `public` beside the
-binary (the PasBuild layout, `target/public`), else `src/main/resources/public`
-for in-repo development runs.
-
-== Editor integration
-
-Pressing `e` while viewing a note (or calling `GET /api/edit?note=<id>`) runs
-the command from the `editor` setting with the note's absolute path appended as
-the final argument.  The editor is launched as an independent process; Luhmann
-does not wait for it.  After you save, the file watcher picks up the change and
-the browser reloads automatically.
-
-How you configure `editor` depends on whether your editor draws its own window
-or needs a terminal:
-
-=== GUI editors (simplest)
-
-An editor that opens its own window works directly, because it does not need a
-controlling terminal:
-
-[source,ini]
-----
-editor = code -g          # VS Code (-g so a path argument opens that file)
-editor = gvim             # GUI vim
-editor = nvim-qt          # GUI neovim
-editor = kate             # KDE
-editor = gedit            # GNOME
-----
-
-=== Terminal editors (need a terminal wrapper)
-
-Console editors such as `vim`, `nvim`, `mcedit` and `nano` draw their UI on a
-terminal.  Launched on their own they have no terminal to draw on, so the
-process starts but nothing appears.  Wrap the editor in a terminal emulator —
-no shell script is required, the `editor` command simply *is* the terminal
-launching the editor:
-
-[source,ini]
-----
-editor = gnome-terminal -- mcedit   # GNOME Terminal (modern '--' syntax)
-editor = gnome-terminal -- vim
-editor = konsole -e mcedit          # KDE Konsole
-editor = xterm -e vim               # xterm
-editor = kitty mcedit               # kitty
-----
-
-Because the note path is appended as the last argument, `gnome-terminal -- vim`
-becomes `gnome-terminal -- vim /path/to/note.adoc`, i.e. a terminal window
-running the editor on that file.
-
-[NOTE]
-====
-The `editor` value is split on spaces, so an executable or argument that itself
-*contains* a space (for example a path with a space in it) is not currently
-supported.  Prefer the `gnome-terminal -- <editor>` form over the deprecated
-`gnome-terminal -e "<editor>"` form, which also quotes awkwardly.
-====
-
-If `editor` is unset, the `e` shortcut is disabled and `/api/edit` returns
-`400`.
+See link:docs/configuration.adoc[the configuration guide] for the full list of
+settings with defaults, and for editor-integration details (GUI vs terminal
+editors, and how to launch console editors such as `vim` or `mcedit`).
 
 == Tags
 
@@ -374,6 +243,7 @@ This compiles and runs every unit-test program under `src/test/pascal`.  The
 network/corpus integration tests (`test_adapters`, `test_http`) are excluded
 from the scripted run and are exercised manually.
 
+[[keyboard-shortcuts]]
 == Keyboard shortcuts (in the browser)
 
 [cols="1,4", options="header"]
