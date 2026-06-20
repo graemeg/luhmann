@@ -22,6 +22,11 @@ const
   SOL_SOCKET   = 1;
   SO_REUSEADDR = 2;
 
+  { send(2) flags. MSG_NOSIGNAL makes a write to a peer-closed socket return
+    EPIPE instead of raising SIGPIPE (whose default action would silently
+    terminate the whole process). }
+  MSG_NOSIGNAL = 16384;   { 0x4000 on Linux }
+
   { special addresses }
   INADDR_ANY      = 0;        { 0.0.0.0 — bind all interfaces }
   INADDR_LOOPBACK = 16777343; { 127.0.0.1 in network byte order (htonl(0x7f000001)) }
@@ -62,8 +67,15 @@ function c_htons(HostShort: UInt16): UInt16;
   external name 'htons';
 function c_shutdown(Fd, How: Integer): Integer;
   external name 'shutdown';
+{ signal(int signum, sighandler_t handler); SIG_IGN = pointer value 1. }
+function c_signal(Signum: Integer; Handler: Pointer): Pointer;
+  external name 'signal';
 
 { --- convenience helpers (Blaise-level) --- }
+
+{ Ignore SIGPIPE process-wide, so a write to a peer-closed socket can never
+  terminate the process (it returns EPIPE instead). Call once at startup. }
+procedure IgnoreSigPipe;
 
 { Open a TCP server socket bound to 127.0.0.1:APort and start listening.
   Returns the listening fd, or -1 on failure. }
@@ -80,6 +92,15 @@ implementation
 
 uses
   StrUtils;
+
+const
+  SIGPIPE = 13;     { Linux signal number }
+  SIG_IGN = 1;      { (void*)1 — ignore the signal }
+
+procedure IgnoreSigPipe;
+begin
+  c_signal(SIGPIPE, Pointer(SIG_IGN));
+end;
 
 function ListenLocal(APort: UInt16; ABacklog: Integer): Integer;
 var
@@ -133,7 +154,7 @@ begin
   P := PChar(S);
   while Total > 0 do
   begin
-    N := c_send(Fd, P, Total, 0);
+    N := c_send(Fd, P, Total, MSG_NOSIGNAL);
     if N <= 0 then
     begin
       Result := False;

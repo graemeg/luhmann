@@ -14,6 +14,7 @@ program Luhmann;
 uses
   Classes,
   Luhmann.Util,
+  Luhmann.Libc,
   Luhmann.Ports,
   Luhmann.Model,
   Luhmann.Config,
@@ -72,6 +73,9 @@ var
   HadConfig: Boolean;
 
 begin
+  { Never let a write to a closed browser socket kill us with SIGPIPE. }
+  IgnoreSigPipe();
+
   if ParamCount() < 1 then
   begin
     WriteLn('Usage: luhmann <root-dir>');
