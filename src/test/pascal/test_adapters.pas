@@ -22,7 +22,7 @@ begin
   WriteLn('index abspath: ', Repo.AbsPathOf('index.adoc'));
   WriteLn('index mtime>0: ', Repo.MtimeOf('index.adoc') > 0);
 
-  Rend := TAsciidoctorRenderer.Create('', '/tmp/luh-render');
+  Rend := TAsciidoctorRenderer.Create('', '/tmp/luh-render', 4);
   html := Rend.Render(src);
   WriteLn('--- rendered index.adoc body ---');
   WriteLn(html);

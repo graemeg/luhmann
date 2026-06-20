@@ -107,7 +107,8 @@ begin
   { --- compose adapters into the port registry --- }
   Ports := TPorts.Create();
   Ports.Repo     := TFilesystemNoteRepository.Create(Config.RootDir);
-  Ports.Renderer := TAsciidoctorRenderer.Create(Config.Asciidoctor, Config.TempDir());
+  Ports.Renderer := TAsciidoctorRenderer.Create(Config.Asciidoctor,
+                      Config.TempDir(), Config.RenderJobs);
   Ports.Index    := TInMemorySearchIndex.Create();
   Ports.Editor   := TProcessEditorLauncher.Create(Config.Editor);
   Ports.Log      := TConsoleLogger.Create();

@@ -14,6 +14,7 @@ type
   end;
   TFakeRenderer = class(IAsciiDocRenderer)
     function Render(const ASource: string): string;
+    procedure RenderMany(ASources: TStringList; AHtmls: TStringList);
   end;
   TFakeIndex = class(ISearchIndex)
   public
@@ -42,6 +43,13 @@ function TFakeRepo.MtimeOf(const AId: string): Int64; begin Result := 1; end;
 function TFakeRepo.Exists(const AId: string): Boolean; begin Result := Sources.ContainsKey(AId); end;
 function TFakeRenderer.Render(const ASource: string): string;
 begin Result := '<body><div id="content">' + ASource + '</div></body>'; end;
+procedure TFakeRenderer.RenderMany(ASources: TStringList; AHtmls: TStringList);
+var i: Integer;
+begin
+  AHtmls.Clear();
+  for i := 0 to ASources.Count - 1 do
+    AHtmls.Add(Render(ASources.Get(i)));
+end;
 procedure TFakeIndex.Upsert(ANote: TNote); begin Upserts := Upserts + 1; end;
 procedure TFakeIndex.Remove(const AId: string); begin Removes := Removes + 1; end;
 procedure TFakeIndex.Clear; begin Clears := Clears + 1; end;

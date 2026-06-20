@@ -26,6 +26,7 @@ type
     Editor:     string;
     CatchAll:   string;
     Asciidoctor: string;
+    RenderJobs: Integer;   { parallel asciidoctor processes during the build }
     constructor Create(const ARootDir: string);
     { Apply overrides from '<root>/.luhmann.ini' if it exists. }
     procedure LoadOverrides;
@@ -51,6 +52,7 @@ begin
   Editor := '';
   CatchAll := 'unfiled';
   Asciidoctor := '/usr/bin/asciidoctor';
+  RenderJobs := 8;
 end;
 
 function TConfig.SiteDir: string;
@@ -119,7 +121,9 @@ begin
     else if Key = 'catch-all-label' then
       CatchAll := Val
     else if Key = 'asciidoctor' then
-      Asciidoctor := Val;
+      Asciidoctor := Val
+    else if Key = 'render-jobs' then
+      RenderJobs := StrToIntDef(Val, RenderJobs);
   end;
   Lines.Free();
 end;

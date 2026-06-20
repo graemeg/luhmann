@@ -34,6 +34,7 @@ type
     FHtml:     TOrderedDictionary<string, string>;
     { id -> note title }
     FTitles:   TOrderedDictionary<string, string>;
+    procedure IndexWith(const AId, ASource, AHtml: string);
     procedure IndexOne(const AId: string);
   public
     constructor Create(APorts: TPorts; const ACatchAll: string);
@@ -96,41 +97,39 @@ begin
   inherited Destroy;
 end;
 
-procedure TChangeProcessor.IndexOne(const AId: string);
+{ Update all derived structures for a note given its already-known source and
+  rendered HTML. The render (the slow step) is done by the caller, so this is
+  pure in-memory work and is shared by the serial and parallel build paths. }
+procedure TChangeProcessor.IndexWith(const AId, ASource, AHtml: string);
 var
-  Source, Html, Title, BaseDir: string;
+  Title, BaseDir: string;
   Tags, Links: TStringList;
   Note: TNote;
   I: Integer;
 begin
-  Source := FPorts.Repo.ReadSource(AId);
-
-  Title := ExtractTitle(Source);
+  Title := ExtractTitle(ASource);
   if Title = '' then
     Title := AId;
-  Html := FPorts.Renderer.Render(Source);
   BaseDir := DirOf(AId);
 
-  Tags  := ExtractTags(Source);
-  Links := ExtractOutLinks(Source, BaseDir);
+  Tags  := ExtractTags(ASource);
+  Links := ExtractOutLinks(ASource, BaseDir);
 
-  { Update derived structures. }
   FGraph.SetOutLinks(AId, Links);
   FTags.SetTags(AId, Tags);
 
   if FHtml.ContainsKey(AId) then
-    FHtml.SetItem(AId, Html)
+    FHtml.SetItem(AId, AHtml)
   else
-    FHtml.Add(AId, Html);
+    FHtml.Add(AId, AHtml);
   if FTitles.ContainsKey(AId) then
     FTitles.SetItem(AId, Title)
   else
     FTitles.Add(AId, Title);
 
-  { Feed the full-text index. }
   Note := TNote.Create(AId);
   Note.Title := Title;
-  Note.BodyHtml := Html;
+  Note.BodyHtml := AHtml;
   for I := 0 to Tags.Count - 1 do
     Note.Tags.Add(Tags.Get(I));
   FPorts.Index.Upsert(Note);
@@ -140,9 +139,19 @@ begin
   Links.Free();
 end;
 
+{ Incremental single-note index: read + render this one note, then index it. }
+procedure TChangeProcessor.IndexOne(const AId: string);
+var
+  Source, Html: string;
+begin
+  Source := FPorts.Repo.ReadSource(AId);
+  Html := FPorts.Renderer.Render(Source);
+  IndexWith(AId, Source, Html);
+end;
+
 procedure TChangeProcessor.BuildAll;
 var
-  Ids: TStringList;
+  Ids, Sources, Htmls: TStringList;
   I: Integer;
   Id: string;
   TStart, TEnd, ElapsedMs: Int64;
@@ -154,22 +163,32 @@ begin
   Ids := FPorts.Repo.ListNoteIds();
   FPorts.Log.Info('Building ' + IntToStr(Ids.Count) + ' notes');
 
-  { Baseline timing: start just before the first render, stop just after the
-    last, so the figure isolates the render/index work. }
+  { Read every source up front, then render them all (potentially in parallel)
+    in one batch, then do the fast in-memory indexing serially. Timing brackets
+    the render+index work. }
   TStart := _TimeNow();
+
+  Sources := TStringList.Create();
+  for I := 0 to Ids.Count - 1 do
+    Sources.Add(FPorts.Repo.ReadSource(Ids.Get(I)));
+
+  Htmls := TStringList.Create();
+  FPorts.Renderer.RenderMany(Sources, Htmls);
+
   for I := 0 to Ids.Count - 1 do
   begin
     Id := Ids.Get(I);
-    { Per-note progress so a slow or hanging render is visible. }
-    FPorts.Log.Info('  [' + IntToStr(I + 1) + '/' + IntToStr(Ids.Count) +
-                    '] ' + Id);
-    IndexOne(Id);
+    IndexWith(Id, Sources.Get(I), Htmls.Get(I));
   end;
+
   TEnd := _TimeNow();
   ElapsedMs := (TEnd - TStart) div 1000000;
 
   FPorts.Log.Info('Build complete: ' + IntToStr(Ids.Count) + ' notes in ' +
                   IntToStr(ElapsedMs) + ' ms');
+
+  Sources.Free();
+  Htmls.Free();
   Ids.Free();
 end;
 

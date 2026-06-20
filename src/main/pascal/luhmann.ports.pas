@@ -34,8 +34,13 @@ type
   { Converts AsciiDoc source to HTML. The default adapter shells out to the
     `asciidoctor` binary. }
   IAsciiDocRenderer = interface
-    { Returns the full rendered HTML document for the given source. }
+    { Returns the rendered HTML for a single source (used for incremental
+      updates). }
     function Render(const ASource: string): string;
+    { Render many sources at once. ASources[i] is rendered into AHtmls[i]
+      (AHtmls is cleared and filled in the same order). Implementations may
+      parallelise. Used for the initial full build. }
+    procedure RenderMany(ASources: TStringList; AHtmls: TStringList);
   end;
 
   { Full-text index over rendered notes. }
