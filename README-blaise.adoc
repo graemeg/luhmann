@@ -203,7 +203,7 @@ the connections between them.
 | `/` | focus the search box
 | `e` | launch the configured editor on the current note
 | `g` | open the graph centred on the current note
-| `Esc` | blur the focused element
+| `Esc` | unfocus the search box (so the single-key shortcuts work again)
 |===
 
 == Configuration
