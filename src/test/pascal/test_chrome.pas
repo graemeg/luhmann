@@ -26,6 +26,16 @@ begin
   Check('css link', Pos('/luhmann.css', page) >= 0);
   Check('js script', Pos('/luhmann.js', page) >= 0);
 
+  { External links in the note body open in a new tab; internal (relative)
+    links do not. }
+  page := RenderPage('Links',
+    '<p><a href="https://example.com">ext</a> <a href="other.html">int</a></p>',
+    nil, nil, nil);
+  Check('external link opens new tab',
+    Pos('target="_blank" rel="noopener" href="https://example.com"', page) >= 0);
+  Check('internal link unchanged',
+    Pos('<a href="other.html">', page) >= 0);
+
   ids.Free(); titles.Free(); tags.Free();
 
   WriteLn(''); WriteLn('PASS=',Pass,' FAIL=',Fail);

@@ -157,6 +157,15 @@ begin
   SB.Free();
 end;
 
+{ Make external links open in a new tab. Internal note links (from xref:) render
+  as relative '.html' hrefs, so only anchors whose href has an http(s) scheme are
+  rewritten; rel="noopener" is added for safety. }
+function ExternaliseLinks(const AHtml: string): string;
+begin
+  Result := ReplaceAll(AHtml, '<a href="http',
+                              '<a target="_blank" rel="noopener" href="http');
+end;
+
 function RenderPage(const ATitle, ABodyHtml: string;
   ABacklinkIds, ABacklinkTitles, ATags: TStringList): string;
 var
@@ -167,7 +176,7 @@ begin
   SB.Append(ChromeHeader());
   SB.Append('<div class="luh-body"><div class="luh-content">');
   SB.Append(RenderTagChips(ATags));
-  SB.Append(ABodyHtml);
+  SB.Append(ExternaliseLinks(ABodyHtml));
   SB.Append(RenderBacklinks(ABacklinkIds, ABacklinkTitles));
   SB.Append('</div></div>');
   SB.Append(PageFoot());
