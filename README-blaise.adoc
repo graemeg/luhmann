@@ -170,6 +170,30 @@ point.  Open http://localhost:2022 to view the Zettelkasten.
 The static-asset directory is resolved as: `$LUHMANN_PUBLIC`, else `public`
 beside the binary (the PasBuild layout), else `src/main/resources/public`.
 
+== Try the example 🍎🍊
+
+The repository ships with a small example Zettelkasten under `example/` — a
+handful of interlinked notes about fruit.  Point Luhmann at it to see the
+features in action:
+
+[source,shell]
+----
+target/luhmann example
+----
+
+Then open http://localhost:2022 and explore:
+
+* the *Backlinks* panel on every note — e.g. open xref-rich `fruit` and see the
+  five notes that reference it;
+* the *graph* (top-right *Graph* link) showing the notes clustering around the
+  shared concepts (`fruit`, `pome`, `citrus`);
+* *tags* — every note is tagged, and nothing is organised by folders;
+* *search* — try `app`, `*range`, or `citrus`.
+
+It is deliberately tiny, but it demonstrates the whole idea: atomic notes,
+organised by tags and links rather than folders, with structure emerging from
+the connections between them.
+
 == Configuration
 
 Luhmann runs with sensible defaults; everything is optional.  To override a
