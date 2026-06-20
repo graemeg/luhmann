@@ -267,6 +267,63 @@ order: the `LUHMANN_PUBLIC` environment variable, else `public` beside the
 binary (the PasBuild layout, `target/public`), else `src/main/resources/public`
 for in-repo development runs.
 
+== Editor integration
+
+Pressing `e` while viewing a note (or calling `GET /api/edit?note=<id>`) runs
+the command from the `editor` setting with the note's absolute path appended as
+the final argument.  The editor is launched as an independent process; Luhmann
+does not wait for it.  After you save, the file watcher picks up the change and
+the browser reloads automatically.
+
+How you configure `editor` depends on whether your editor draws its own window
+or needs a terminal:
+
+=== GUI editors (simplest)
+
+An editor that opens its own window works directly, because it does not need a
+controlling terminal:
+
+[source,ini]
+----
+editor = code -g          # VS Code (-g so a path argument opens that file)
+editor = gvim             # GUI vim
+editor = nvim-qt          # GUI neovim
+editor = kate             # KDE
+editor = gedit            # GNOME
+----
+
+=== Terminal editors (need a terminal wrapper)
+
+Console editors such as `vim`, `nvim`, `mcedit` and `nano` draw their UI on a
+terminal.  Launched on their own they have no terminal to draw on, so the
+process starts but nothing appears.  Wrap the editor in a terminal emulator —
+no shell script is required, the `editor` command simply *is* the terminal
+launching the editor:
+
+[source,ini]
+----
+editor = gnome-terminal -- mcedit   # GNOME Terminal (modern '--' syntax)
+editor = gnome-terminal -- vim
+editor = konsole -e mcedit          # KDE Konsole
+editor = xterm -e vim               # xterm
+editor = kitty mcedit               # kitty
+----
+
+Because the note path is appended as the last argument, `gnome-terminal -- vim`
+becomes `gnome-terminal -- vim /path/to/note.adoc`, i.e. a terminal window
+running the editor on that file.
+
+[NOTE]
+====
+The `editor` value is split on spaces, so an executable or argument that itself
+*contains* a space (for example a path with a space in it) is not currently
+supported.  Prefer the `gnome-terminal -- <editor>` form over the deprecated
+`gnome-terminal -e "<editor>"` form, which also quotes awkwardly.
+====
+
+If `editor` is unset, the `e` shortcut is disabled and `/api/edit` returns
+`400`.
+
 == Tags
 
 Declare tags inside a note with the AsciiDoc `:tags:` attribute:
