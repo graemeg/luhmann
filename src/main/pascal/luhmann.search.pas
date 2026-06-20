@@ -317,9 +317,42 @@ begin
     Result := Result + '...';
 end;
 
+{ Parse a raw query into clean terms plus a per-term match mode. A whitespace
+  separated piece beginning with '*' requests a substring (infix) match; any
+  other piece is a prefix match. The piece is then tokenised (which lower-cases
+  it and drops punctuation, including the leading '*'), and its first token is
+  taken as the term. ATerms[i] holds the term, AModes[i] is 's' or 'p'. }
+procedure ParseQueryTerms(const AQuery: string; ATerms, AModes: TStringList);
+var
+  Pieces, Toks: TStringList;
+  I: Integer;
+  Piece: string;
+  Sub: Boolean;
+begin
+  ATerms.Clear();
+  AModes.Clear();
+  Pieces := SplitChar(AQuery, 32);   { split on space }
+  for I := 0 to Pieces.Count - 1 do
+  begin
+    Piece := Pieces.Get(I);
+    Sub := (Length(Piece) > 0) and (Byte(Piece[0]) = 42);   { leading '*' }
+    Toks := Tokenise(Piece);   { lower-cases, strips '*' and other punctuation }
+    if Toks.Count > 0 then
+    begin
+      ATerms.Add(Toks.Get(0));
+      if Sub then
+        AModes.Add('s')
+      else
+        AModes.Add('p');
+    end;
+    Toks.Free();
+  end;
+  Pieces.Free();
+end;
+
 function TInMemorySearchIndex.Search(const AQuery: string): TSearchHitList;
 var
-  Terms: TStringList;
+  Terms, Modes: TStringList;
   Scores: TOrderedDictionary<string, Integer>;
   I, J, K, Sc, BestIdx, BestScore, IdxTerm: Integer;
   Term, Id, Body, Title: string;
@@ -328,29 +361,36 @@ var
   Cur: Integer;
   Used: TStringList;
   Hit: TSearchHit;
+  WantSub, Matched: Boolean;
 begin
   Result := TSearchHitList.Create();
-  Terms := Tokenise(AQuery);
+
+  { Parse the query into terms, noting per term whether a substring (infix)
+    match was requested. A term works as a prefix by default ('zet' finds
+    'zettelkasten'); a leading '*' switches it to substring ('*kas' finds
+    'zettelkasten'). Modes[i] is 's' for substring or 'p' for prefix. }
+  Terms := TStringList.Create();
+  Modes := TStringList.Create();
+  ParseQueryTerms(AQuery, Terms, Modes);
   if Terms.Count = 0 then
   begin
     Terms.Free();
+    Modes.Free();
     Exit;
   end;
 
-  { Accumulate a score per note. Each query term matches any indexed term that
-    starts with it (prefix search), so 'zet' or 'zet*' finds 'zettelkasten'. A
-    trailing '*' on the query term is treated as an explicit wildcard and
-    stripped. A full word still matches itself (it is a prefix of itself). }
   Scores := TOrderedDictionary<string, Integer>.Create();
   for I := 0 to Terms.Count - 1 do
   begin
     Term := Terms.Get(I);
-    if (Length(Term) > 0) and (Byte(Term[Length(Term) - 1]) = 42) then  { trailing '*' }
-      Term := Copy(Term, 0, Length(Term) - 1);
-    if Term = '' then
-      Continue;
+    WantSub := Modes.Get(I) = 's';
     for IdxTerm := 0 to FTerms.Count - 1 do
-      if StartsStr(Term, FTerms.Keys[IdxTerm]) then
+    begin
+      if WantSub then
+        Matched := ContainsStr(FTerms.Keys[IdxTerm], Term)
+      else
+        Matched := StartsStr(Term, FTerms.Keys[IdxTerm]);
+      if Matched then
       begin
         Plist := FTerms.Values[IdxTerm];
         for J := 0 to Plist.Count - 1 do
@@ -362,6 +402,7 @@ begin
             Scores.Add(P.NoteId, P.Freq);
         end;
       end;
+    end;
   end;
 
   { Selection sort by score descending into the result list (corpora are
@@ -401,6 +442,7 @@ begin
   Used.Free();
   Scores.Free();
   Terms.Free();
+  Modes.Free();
 end;
 
 end.

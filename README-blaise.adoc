@@ -41,7 +41,7 @@ Organisation and search::
   folder; untagged notes fall under a configurable catch-all label.  Browse all
   tags at `/tags`.
 * *Full-text search* — a built-in index over every note's title and body, with
-  highlighted result snippets.
+  prefix matching (and `*` for substring) and highlighted result snippets.
 
 Workflow::
 * *Live reload* — edit a note in any editor and save; the browser refreshes
@@ -207,6 +207,44 @@ An apple is a pome fruit ...
 
 Notes with no tags are filed under the catch-all label (default `unfiled`), so
 every note is reachable from `/tags`.
+
+== Search
+
+The search box (or `/search?q=...`) runs a full-text query over every note's
+title and body.  Matching is case-insensitive and works on word *prefixes* by
+default, so a partial word finds the whole word:
+
+[cols="1,3", options="header"]
+|===
+| Query | Matches
+
+| `zet`
+| any note containing a word starting with `zet` — e.g. *Zettelkasten*.
+
+| `zettel`, `zettelkasten`
+| the same note (a full word is a prefix of itself).
+
+| `note tag`
+| notes containing a word starting with `note` *and/or* one starting with
+  `tag` (more matching terms rank higher).
+|===
+
+To match a fragment in the *middle or end* of a word, prefix the term with `*`
+(a substring search):
+
+[cols="1,3", options="header"]
+|===
+| Query | Matches
+
+| `kas`
+| nothing — `kas` is not the start of any word.
+
+| `*kas`, `*kasten`
+| *Zettelkasten* — the fragment appears inside the word.
+|===
+
+Prefix is the default because it keeps short queries focused; reach for `*`
+when you specifically want an infix match.
 
 [[startup-performance]]
 == Startup performance

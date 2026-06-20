@@ -71,6 +71,15 @@ begin
   Check('no match for zzz', hits.Count = 0);
   hits.Free();
 
+  { Substring opt-in: a leading '*' matches a term anywhere in a word.
+    'range' is in the middle/end of 'orange' -> prefix misses, '*range' hits. }
+  hits := Idx.Search('range');
+  Check('prefix range -> no match', hits.Count = 0);
+  hits.Free();
+  hits := Idx.Search('*range');
+  Check('substring *range -> orange', (hits.Count = 1) and (hits[0].Id = 'fruit/orange.adoc'));
+  hits.Free();
+
   Idx.Remove('fruit/apple.adoc');
   hits := Idx.Search('apple');
   Check('apple gone after remove', hits.Count = 0);
