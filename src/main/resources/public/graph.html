@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="/favicon.svg">
+  <link rel="stylesheet" href="/luhmann.css">
+  <title>Graph - Luhmann</title>
+  <script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+</head>
+<body>
+  <div class="luh-header">
+    <div class="luh-brand"><a href="/">Luhmann</a></div>
+    <div class="luh-nav"><a href="/graph">Graph</a> <a href="/tags">Tags</a></div>
+    <div class="luh-spacer"></div>
+    <form class="luh-search" method="GET" action="/search"><input name="q" placeholder="Search..."></form>
+  </div>
+  <div class="luh-body">
+    <div class="luh-content" style="max-width: 60rem;">
+      <h1 id="luh-graph-title">Note graph</h1>
+      <p class="luh-none" id="luh-graph-hint">
+        Click a node to open that note. Double-click to re-centre the graph on it.
+        Use your browser Back button to return here.
+      </p>
+      <div id="luh-graph"></div>
+    </div>
+  </div>
+  <script>
+    function qparam(name) {
+      var m = new RegExp('[?&]' + name + '=([^&]*)').exec(location.search);
+      return m ? decodeURIComponent(m[1]) : '';
+    }
+
+    var cy = null;
+
+    function noteUrl(id) { return '/' + id.replace(/\.adoc$/, '.html'); }
+
+    function loadGraph(note, depth) {
+      var url = note ? ('/api/graph?note=' + encodeURIComponent(note) + '&depth=' + (depth || 1))
+                     : '/api/graph/all';
+      fetch(url).then(function (r) { return r.json(); }).then(function (data) {
+        render(data, note);
+      });
+    }
+
+    function render(data, centerNote) {
+      var elements = [];
+      (data.nodes || []).forEach(function (n) {
+        elements.push({ data: { id: n.id, label: n.title || n.id, center: !!n.center } });
+      });
+      (data.edges || []).forEach(function (e) {
+        elements.push({ data: { source: e.from, target: e.to } });
+      });
+
+      document.getElementById('luh-graph-title').textContent =
+        centerNote ? ('Graph: ' + centerNote) : 'Note graph';
+
+      cy = cytoscape({
+        container: document.getElementById('luh-graph'),
+        elements: elements,
+        style: [
+          { selector: 'node', style: {
+              'label': 'data(label)', 'font-size': '11px', 'color': '#1a1a1a',
+              'background-color': '#9bb8d8', 'text-valign': 'bottom',
+              'text-margin-y': 4, 'width': 18, 'height': 18 } },
+          { selector: 'node[?center]', style: {
+              'background-color': '#3b6ea5', 'width': 28, 'height': 28,
+              'font-weight': 'bold' } },
+          { selector: 'edge', style: {
+              'width': 1.5, 'line-color': '#cfd6df',
+              'target-arrow-color': '#cfd6df', 'target-arrow-shape': 'triangle',
+              'curve-style': 'bezier' } }
+        ],
+        layout: { name: 'cose', animate: false, padding: 30 }
+      });
+
+      // Single click: open the note (pushing graph state so Back returns here).
+      cy.on('tap', 'node', function (evt) {
+        var id = evt.target.id();
+        location.href = noteUrl(id);
+      });
+      // Double click: re-centre the graph on that node without leaving.
+      cy.on('dbltap', 'node', function (evt) {
+        var id = evt.target.id();
+        history.pushState({ note: id }, '', '/graph?note=' + encodeURIComponent(id));
+        loadGraph(id, 1);
+      });
+    }
+
+    window.addEventListener('popstate', function (e) {
+      var note = (e.state && e.state.note) || qparam('note');
+      loadGraph(note, 1);
+    });
+
+    loadGraph(qparam('note'), 1);
+
+    // Live reload.
+    (function () {
+      var socket = new WebSocket(location.origin.replace(/^http/, 'ws') + '/ws');
+      socket.addEventListener('message', function () { loadGraph(qparam('note'), 1); });
+    })();
+  </script>
+</body>
+</html>

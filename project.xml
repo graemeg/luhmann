@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project>
+  <!-- Luhmann — Zettelkasten web server, Blaise Pascal port. -->
+  <name>luhmann</name>
+  <version>0.1.0-SNAPSHOT</version>
+  <author>Graeme Geldenhuys</author>
+  <license>MIT</license>
+
+  <build>
+    <packaging>application</packaging>
+    <mainSource>luhmann.pas</mainSource>
+    <executableName>luhmann</executableName>
+
+    <!-- The Blaise stdlib and runtime are compiled from source, so their
+         source trees must be on the unit path alongside our own units.
+         Adjust the two relative paths if the compiler checkout moves. -->
+    <manualUnitPaths>true</manualUnitPaths>
+    <unitPaths>
+      <path>src/main/pascal</path>
+      <path>../new-pascal-compiler/runtime/src/main/pascal</path>
+      <path>../new-pascal-compiler/stdlib/src/main/pascal</path>
+    </unitPaths>
+  </build>
+
+  <test>
+    <framework>auto</framework>
+    <testSource>TestRunner.pas</testSource>
+    <frameworkOptions>
+      <option>--all</option>
+    </frameworkOptions>
+  </test>
+</project>

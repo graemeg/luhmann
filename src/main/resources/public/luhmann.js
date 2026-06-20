@@ -1,70 +1,74 @@
-var socket = new WebSocket(location.origin.replace(/^http/, 'ws') + '/ws');
-socket.addEventListener('message', function (event) { window.location.reload(); });
+// Live reload over WebSocket.
+//
+// A reload signal that arrives while this tab is backgrounded is remembered
+// (browsers throttle background tabs and may defer the reload), and applied
+// the moment the tab becomes visible again. This keeps listing pages such as
+// /tags/<tag> in sync after you edit a note in another tab.
+(function () {
+  var reloadPending = false;
+
+  function doReload() { window.location.reload(); }
+
+  function onSignal() {
+    if (document.visibilityState === 'visible') {
+      doReload();
+    } else {
+      reloadPending = true;
+    }
+  }
+
+  var socket = new WebSocket(location.origin.replace(/^http/, 'ws') + '/ws');
+  socket.addEventListener('message', onSignal);
+
+  document.addEventListener('visibilitychange', function () {
+    if (reloadPending && document.visibilityState === 'visible') {
+      reloadPending = false;
+      doReload();
+    }
+  });
+})();
 
 function currentNote() {
-    var loc = location.pathname;
-    if (loc === '/') {
-        var note = 'index.adoc';
-    } else {
-        var note = loc.replace(/^\//, '').replace(/html$/, 'adoc');
-    }
-    return note;
+  var loc = location.pathname;
+  if (loc === '/' || loc === '') return 'index.adoc';
+  return loc.replace(/^\//, '').replace(/\.html$/, '.adoc');
 }
 
-function focusSearch () {
-    var input = document.getElementsByName('q').item(0)
-    input.focus();
-    input.select();
+function focusSearch() {
+  var input = document.getElementsByName('q').item(0);
+  if (input) { input.focus(); input.select(); }
 }
 
 function hideToast() {
-    var toast = document.getElementById('luh-toast');
-    if (toast) {
-        toast.remove();
-    }
+  var t = document.getElementById('luh-toast');
+  if (t) t.remove();
 }
 
 function showToast(text) {
-    hideToast();
-    var toast = document.createElement('div');
-    toast.id = 'luh-toast';
-    var inner = document.createElement('div');
-    inner.className = 'luh-toast-inner';
-    inner.appendChild(document.createTextNode(text));
-    toast.appendChild(inner);
-    document.body.appendChild(toast);
-    setTimeout(hideToast, 1000);
+  hideToast();
+  var t = document.createElement('div');
+  t.id = 'luh-toast';
+  t.appendChild(document.createTextNode(text));
+  document.body.appendChild(t);
+  setTimeout(hideToast, 1200);
 }
 
-function keyListener (e) {
-
-    if (document.activeElement && e.key === 'Escape') {
-
-        document.activeElement.blur();
-
-    } else if (e.target.tagName === 'BODY') {
-
-        if (e.key === '/') {
-            e.preventDefault();
-            focusSearch();
-
-        } else if (e.key === 'e') {
-            showToast('Launching editor...');
-            var xhr = new XMLHttpRequest();
-            //xhr.addEventListener('load', reqListener);
-            xhr.open('GET', '/api/edit?note=' + currentNote());
-            xhr.send();
-
-        } else if (e.key === 'y') {
-            var el = document.getElementById('luh-copy-input')
-            el.value = 'xref:' + currentNote() + '[' + document.title + ']';
-            el.select();
-            el.setSelectionRange(0, 9999);
-            document.execCommand('copy');
-            el.blur();
-            showToast('Xref copied to clipboard');
-        }
+function keyListener(e) {
+  if (document.activeElement && e.key === 'Escape') {
+    document.activeElement.blur();
+  } else if (e.target.tagName === 'BODY') {
+    if (e.key === '/') {
+      e.preventDefault();
+      focusSearch();
+    } else if (e.key === 'e') {
+      showToast('Launching editor...');
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', '/api/edit?note=' + encodeURIComponent(currentNote()));
+      xhr.send();
+    } else if (e.key === 'g') {
+      location.href = '/graph?note=' + encodeURIComponent(currentNote());
     }
+  }
 }
 
-document.addEventListener('keydown', keyListener)
+document.addEventListener('keydown', keyListener);

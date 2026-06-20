@@ -1,172 +1,93 @@
-/* Luhmann CSS */
-
 :root {
-  /* See https://tailwindcolor.com/ */
-  --banner-bg:   #D4D4D4; /* true gray 300 */
-  --banner-fg:   #525252; /* true gray 600 */
-  --search-icon: #A3A3A3; /* true gray 400 */
+  --luh-bg: #fbfbf9;
+  --luh-fg: #1a1a1a;
+  --luh-accent: #3b6ea5;
+  --luh-muted: #6a6a6a;
+  --luh-border: #e2e0da;
+  --luh-chip: #eef2f7;
 }
 
-
-/*------------- Asciidoctor Default Overrides -------------*/
+* { box-sizing: border-box; }
 
 body {
-  font-family: "Source Serif 4", serif;
   margin: 0;
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-}
-
-h1, h2, h3, h4, h5, h6, #header > h1:only-child {
-  border: none;
-  color: black;
-  font-family: "Source Serif 4", serif;
-  font-weight: 500;
-}
-
-.admonitionblock td.content > .title, .audioblock > .title, .exampleblock > .title, .imageblock > .title, .listingblock > .title, .literalblock > .title, .stemblock > .title, .openblock > .title, .paragraph > .title, .quoteblock > .title, table.tableblock > .title, .verseblock > .title, .videoblock > .title, .dlist > .title, .olist > .title, .ulist > .title, .qlist > .title, .hdlist > .title {
-  font-family: "Source Serif 4", serif;
-}
-
-#footer {
-  background: none;
-}
-
-#footer-text {
-  color: inherit;
-}
-
-
-/*------------- Luhmann Chrome -------------*/
-
-/* Provided by Asciidoctor inline, but here also for the search page */
-*, ::before, ::after {
-  box-sizing: border-box;
-}
-
-.luh-outer {
-  display: flex;
-  flex-direction: column;
-  position: absolute;
-
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
+  font-family: "Source Serif 4", Georgia, serif;
+  background: var(--luh-bg);
+  color: var(--luh-fg);
+  line-height: 1.6;
 }
 
 .luh-header {
-  background-color: var(--banner-bg);
-  color: var(--banner-fg);
-
+  position: sticky;
+  top: 0;
   display: flex;
   align-items: center;
-  flex-direction: row;
-
-  padding: 8px 12px;
+  gap: 1rem;
+  padding: 0.6rem 1.2rem;
+  background: #fff;
+  border-bottom: 1px solid var(--luh-border);
+  z-index: 10;
 }
 
-.luh-logo {
-  width: 24px;
-  height: 24px;
-  fill: var(--banner-fg);
-  margin-right: 8px;
-}
-
-.luh-brand {
-  font-size: 28px;
-}
-
-.luh-brand a {
-  color: var(--banner-fg);
-  text-decoration: none;
-}
-
-@media (max-width: 600px) {
-  .luh-brand {
-    display: none;
-  }
-}
-
-.luh-spacer {
-  flex: auto;
-}
-
-.luh-search {
-  position: relative;
-}
+.luh-brand a { font-weight: 700; font-size: 1.2rem; color: var(--luh-fg); text-decoration: none; }
+.luh-nav a { margin-right: 0.8rem; color: var(--luh-accent); text-decoration: none; font-size: 0.95rem; }
+.luh-spacer { flex: 1; }
 
 .luh-search input {
-  background-color: white;
-  color: var(--banner-fg);
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--luh-border);
+  border-radius: 6px;
+  font-size: 0.95rem;
+  min-width: 16rem;
+}
 
-  border: none;
+.luh-body { display: flex; justify-content: center; padding: 2rem 1rem; }
+.luh-content { width: 100%; max-width: 46rem; }
+.luh-content h1 { font-size: 2rem; }
+.luh-content a { color: var(--luh-accent); }
+
+.luh-tags { margin-bottom: 1rem; }
+.luh-tag {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  margin-right: 0.3rem;
+  background: var(--luh-chip);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  text-decoration: none;
+  color: var(--luh-accent);
+}
+
+.luh-backlinks { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--luh-border); }
+.luh-backlinks h3 { font-size: 1rem; color: var(--luh-muted); }
+.luh-none { color: var(--luh-muted); font-style: italic; }
+
+.luh-result { margin-bottom: 1.4rem; }
+.luh-result-title { font-size: 1.1rem; font-weight: 600; }
+.luh-result-snippet { color: var(--luh-muted); font-size: 0.95rem; }
+
+.luh-taglist a { display: inline-block; margin: 0.2rem 0.4rem 0.2rem 0; }
+
+#luh-graph {
+  width: 100%;
+  height: 78vh;
+  border: 1px solid var(--luh-border);
   border-radius: 8px;
-
-  font-family: "Source Serif 4", serif;
-  font-size: 100%;
-
-  padding: 6px 40px 6px 12px;
-  width: 300px;
-}
-
-.luh-search svg {
-  width: 24px;
-  height: 24px;
-
-  fill: var(--search-icon);
-
-  position: absolute;
-  right: 6px;
-  top: 8px;
-}
-
-.luh-body {
-  flex: auto;
-  overflow: auto;
-  padding: 0 16px;
-}
-
-.luh-inner {
-  max-width: 900px;
-  margin: 0 auto;
-}
-
-.searchResult {
-  margin-bottom: 16px;
-}
-
-.searchResult a {
-  display: block;
-  font-weight: bold;
-}
-
-form { margin: 0; }
-
-#luh-copy-input {
-  position: absolute;
-  top: -1000px;
-  left: -1000px;
+  background: #fff;
 }
 
 #luh-toast {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  padding-top: 24px;
-  display: flex;
-  flex-direction: row;
-  justify-content: center;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a1a1a;
+  color: #fff;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-family: sans-serif;
+  font-size: 0.9rem;
+  z-index: 100;
 }
 
-.luh-toast-inner {
-  background-color: #999;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px 0 rgb(0 0 0 / 0.1);
-  color: white;
-  padding: 12px 16px;
-}
+#luh-copy-input { position: absolute; left: -9999px; }

@@ -1,0 +1,140 @@
+= Luhmann (Blaise Pascal port)
+:icons: font
+
+This branch reimplements Luhmann in the
+https://github.com/graemeg/blaise[Blaise] Pascal language, built with
+https://github.com/graemeg/pasbuild[PasBuild].  It follows the hexagonal
+(ports and adapters) architecture described in
+link:docs/java-port-design.adoc[docs/java-port-design.adoc] and adds three
+features over the original Clojure implementation: automatic backlinks,
+tag-based organisation with a catch-all for untagged notes, and an
+Obsidian-style interactive note graph.
+
+== What it does
+
+Luhmann turns a directory of AsciiDoc files into a personal Zettelkasten served
+over HTTP on localhost.  It:
+
+* renders each `.adoc` note to HTML (via the `asciidoctor` binary) and serves it
+  wrapped in a common UI chrome;
+* derives a link graph from the note sources and shows *backlinks* on every page;
+* organises notes by in-note `:tags:` (untagged notes fall under a configurable
+  catch-all label), browsable at `/tags`;
+* offers a full-text search over all notes;
+* renders an interactive graph at `/graph` with click-through navigation;
+* live-reloads the browser over a WebSocket whenever a note changes on disk.
+
+== Architecture
+
+The domain core (model, link graph, tag index, change orchestration, link/tag
+extraction) is pure Pascal and depends only on a set of port interfaces.  The
+adapters implement those ports with concrete technology.  The core is covered by
+unit tests that run entirely in memory with no server, filesystem, or external
+process.
+
+[cols="1,3", options="header"]
+|===
+| Unit | Role
+
+| `luhmann.model`      | Domain records: note, search hit, hit list
+| `luhmann.ports`      | Port interfaces + the `TPorts` adapter registry
+| `luhmann.graph`      | In-memory link graph (forward + backlink adjacency)
+| `luhmann.tagindex`   | Tag inverted index with catch-all
+| `luhmann.extract`    | Pure AsciiDoc title/tag/xref scanners
+| `luhmann.changeproc` | Render -> index -> graph/tag orchestration (the core)
+| `luhmann.adapters`   | Filesystem repo, asciidoctor renderer, editor, logger
+| `luhmann.search`     | Minimal in-memory full-text index (Lucene stand-in)
+| `luhmann.watch`      | Polling directory watcher (mtime diffing)
+| `luhmann.config`     | Defaults + `.luhmann.ini` overrides
+| `luhmann.http`       | HTTP/1.1 server + WebSocket reload push
+| `luhmann.crypto`     | SHA-1 + Base64 (for the WebSocket handshake)
+| `luhmann.json`       | JSON writer (for the graph/API endpoints)
+| `luhmann.chrome`     | Templated HTML page assembly
+| `luhmann.app`        | The request router (driving adapter)
+| `luhmann.libc`       | libc/socket FFI bindings
+| `luhmann.util`       | String/path helpers
+| `luhmann`            | Composition root + event loop (program entry)
+|===
+
+New, generally-useful units (`luhmann.http`, `luhmann.json`, `luhmann.crypto`,
+the socket bindings in `luhmann.libc`, and the polling watcher) are candidates
+to move into the Blaise standard library as a follow-up.
+
+== Building
+
+Prerequisites:
+
+* A Blaise compiler binary (tested with `v0.12.0-pre`).
+* PasBuild on the `PATH`.
+* The `asciidoctor` binary (`/usr/bin/asciidoctor`) for rendering, and `find`
+  for note enumeration.
+
+[source,shell]
+----
+pasbuild compile --compiler /path/to/blaise
+----
+
+The executable is produced at `target/luhmann`, with static assets copied to
+`target/public`.
+
+== Running
+
+[source,shell]
+----
+target/luhmann /path/to/notes
+----
+
+`/path/to/notes` is a directory of `.adoc` files with an `index.adoc` entry
+point.  Open http://localhost:2022 to view the Zettelkasten.
+
+The static-asset directory is resolved as: `$LUHMANN_PUBLIC`, else `public`
+beside the binary (the PasBuild layout), else `src/main/resources/public`.
+
+=== Configuration
+
+An optional `.luhmann.ini` in the notes directory overrides the defaults:
+
+[source,ini]
+----
+port = 2022
+editor = nvim-qt
+catch-all-label = unfiled
+asciidoctor = /usr/bin/asciidoctor
+----
+
+== Tags
+
+Declare tags inside a note with the AsciiDoc `:tags:` attribute:
+
+[source,asciidoc]
+----
+= Apple
+:tags: fruit, pome, edible
+
+An apple is a pome fruit ...
+----
+
+Notes with no tags are filed under the catch-all label (default `unfiled`), so
+every note is reachable from `/tags`.
+
+== Tests
+
+[source,shell]
+----
+scripts/test.sh
+----
+
+This compiles and runs every unit-test program under `src/test/pascal`.  The
+network/corpus integration tests (`test_adapters`, `test_http`) are excluded
+from the scripted run and are exercised manually.
+
+== Keyboard shortcuts (in the browser)
+
+[cols="1,4", options="header"]
+|===
+| Key | Action
+| `/` | focus the search box
+| `e` | launch the configured editor on the current note
+| `g` | open the graph centred on the current note
+| `Esc` | blur the focused element
+|===
