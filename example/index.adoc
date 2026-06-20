@@ -1,12 +1,15 @@
 = Example Zettelkasten
 :tags: home
 
-This is an example Zettelkasten to demonstrate Luhmann.
+This is an example Zettelkasten to demonstrate Luhmann.  It is a small web of
+linked notes about fruit: a couple of concrete notes
+(xref:apple.adoc[apple], xref:orange.adoc[orange]) and the concepts that
+connect them (xref:fruit.adoc[fruit], xref:pome.adoc[pome],
+xref:citrus.adoc[citrus]).
 
-== Notes
-
-* xref:fruit/apple.adoc[Apple]
-* xref:fruit/orange.adoc[Orange]
+Open any note and look at its *Backlinks* section, or the
+link:/graph[graph], to see how the notes connect.  Notes are organised by
+their `:tags:`, not by folders — everything here lives in one directory.
 
 == Reference
 

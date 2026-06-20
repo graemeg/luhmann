@@ -1,0 +1,9 @@
+= Pome
+:tags: concept, botany
+
+A pome is a type of xref:fruit.adoc[fruit] produced by certain plants in the
+rose family.  The fleshy part we eat develops from the receptacle around the
+core, rather than from the ovary alone.
+
+The xref:apple.adoc[apple] is the most familiar pome; pears and quinces are
+pomes too.

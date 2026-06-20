@@ -1,0 +1,10 @@
+= Orange
+:tags: fruit, citrus
+
+An orange is an edible xref:fruit.adoc[fruit] of various
+xref:citrus.adoc[citrus] species in the family Rutaceae.  It primarily refers
+to _Citrus × sinensis_, the sweet orange, as distinct from the related bitter
+orange.
+
+Unlike the xref:apple.adoc[apple], which is a pome, the orange divides into
+juicy segments inside an aromatic rind.

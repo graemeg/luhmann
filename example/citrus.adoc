@@ -1,0 +1,9 @@
+= Citrus
+:tags: concept, botany
+
+Citrus is a group of flowering trees and shrubs in the rue family, and the
+xref:fruit.adoc[fruit] they bear.  Citrus fruits are known for their juicy
+segments and aromatic rind.
+
+The xref:orange.adoc[orange] is a citrus fruit; lemons, limes and grapefruit
+are citrus too.

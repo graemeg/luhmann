@@ -1,0 +1,10 @@
+= Fruit
+:tags: concept, botany
+
+In botany, a fruit is the seed-bearing structure of a flowering plant, formed
+from the ovary after flowering.  In everyday use the word usually means the
+sweet, fleshy kinds we eat.
+
+Fruits are grouped into many types by how they form, including the
+xref:pome.adoc[pome] (such as the xref:apple.adoc[apple]) and the
+xref:citrus.adoc[citrus] (such as the xref:orange.adoc[orange]).
