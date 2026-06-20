@@ -71,6 +71,9 @@ uses
   Luhmann.Extract,
   Luhmann.Util;
 
+{ Monotonic-ish wall clock in nanoseconds (RTL builtin). }
+function _TimeNow(): Int64; external name '_TimeNow';
+
 constructor TChangeProcessor.Create(APorts: TPorts; const ACatchAll: string);
 begin
   FPorts := APorts;
@@ -142,6 +145,7 @@ var
   Ids: TStringList;
   I: Integer;
   Id: string;
+  TStart, TEnd, ElapsedMs: Int64;
 begin
   FGraph.Clear();
   FTags.Clear();
@@ -149,6 +153,10 @@ begin
 
   Ids := FPorts.Repo.ListNoteIds();
   FPorts.Log.Info('Building ' + IntToStr(Ids.Count) + ' notes');
+
+  { Baseline timing: start just before the first render, stop just after the
+    last, so the figure isolates the render/index work. }
+  TStart := _TimeNow();
   for I := 0 to Ids.Count - 1 do
   begin
     Id := Ids.Get(I);
@@ -157,7 +165,11 @@ begin
                     '] ' + Id);
     IndexOne(Id);
   end;
-  FPorts.Log.Info('Build complete: ' + IntToStr(Ids.Count) + ' notes');
+  TEnd := _TimeNow();
+  ElapsedMs := (TEnd - TStart) div 1000000;
+
+  FPorts.Log.Info('Build complete: ' + IntToStr(Ids.Count) + ' notes in ' +
+                  IntToStr(ElapsedMs) + ' ms');
   Ids.Free();
 end;
 
