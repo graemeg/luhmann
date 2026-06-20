@@ -6,7 +6,7 @@
   <link rel="icon" href="/favicon.svg">
   <link rel="stylesheet" href="/luhmann.css">
   <title>Graph - Luhmann</title>
-  <script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+  <script src="/cytoscape.min.js"></script>
 </head>
 <body>
   <div class="luh-header">
@@ -35,12 +35,29 @@
 
     function noteUrl(id) { return '/' + id.replace(/\.adoc$/, '.html'); }
 
+    function showHint(msg) {
+      document.getElementById('luh-graph-hint').textContent = msg;
+    }
+
     function loadGraph(note, depth) {
+      if (typeof cytoscape === 'undefined') {
+        showHint('Graph library failed to load (cytoscape.min.js). ' +
+                 'Check that the asset is being served.');
+        return;
+      }
       var url = note ? ('/api/graph?note=' + encodeURIComponent(note) + '&depth=' + (depth || 1))
                      : '/api/graph/all';
-      fetch(url).then(function (r) { return r.json(); }).then(function (data) {
-        render(data, note);
-      });
+      fetch(url)
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (!data.nodes || data.nodes.length === 0) {
+            showHint('No notes to show in the graph yet.');
+          }
+          render(data, note);
+        })
+        .catch(function (err) {
+          showHint('Could not load graph data: ' + err);
+        });
     }
 
     function render(data, centerNote) {
