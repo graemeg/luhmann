@@ -28,8 +28,11 @@ type
     Asciidoctor: string;
     RenderJobs: Integer;   { parallel asciidoctor processes during the build }
     constructor Create(const ARootDir: string);
-    { Apply overrides from '<root>/.luhmann.ini' if it exists. }
-    procedure LoadOverrides;
+    { Apply overrides from '<root>/.luhmann.ini' if it exists. Returns True if
+      a config file was found and applied, False if defaults were used. }
+    function LoadOverrides: Boolean;
+    { Absolute path of the config file (whether or not it exists). }
+    function ConfigPath: string;
     function SiteDir: string;
     function TempDir: string;
   end;
@@ -91,15 +94,23 @@ begin
   Result := Acc;
 end;
 
-procedure TConfig.LoadOverrides;
+function TConfig.ConfigPath: string;
+begin
+  Result := RootDir + '/.luhmann.ini';
+end;
+
+function TConfig.LoadOverrides: Boolean;
 var
   Path, Content, Line, Key, Val: string;
   Lines: TStringList;
   I, Eq: Integer;
 begin
-  Path := RootDir + '/.luhmann.ini';
+  Path := ConfigPath();
   if not FileExists(Path) then
+  begin
+    Result := False;
     Exit;
+  end;
   Content := ReadFile(Path);
   Lines := SplitLines(Content);
   for I := 0 to Lines.Count - 1 do
@@ -126,6 +137,7 @@ begin
       RenderJobs := StrToIntDef(Val, RenderJobs);
   end;
   Lines.Free();
+  Result := True;
 end;
 
 end.

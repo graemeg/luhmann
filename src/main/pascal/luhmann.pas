@@ -69,6 +69,7 @@ var
   Handler: IRequestHandler;
   CS: TChangeSet;
   PollCounter: Integer;
+  HadConfig: Boolean;
 
 begin
   if ParamCount() < 1 then
@@ -96,13 +97,19 @@ begin
   end;
 
   Config := TConfig.Create(RootDir);
-  Config.LoadOverrides();
+  HadConfig := Config.LoadOverrides();
   ForceDirectories(Config.TempDir());
 
   WriteLn('Luhmann starting');
-  WriteLn('  root:    ', Config.RootDir);
-  WriteLn('  port:    ', Config.Port);
-  WriteLn('  public:  ', PublicDir);
+  WriteLn('  root:        ', Config.RootDir);
+  if HadConfig then
+    WriteLn('  config:      ', Config.ConfigPath())
+  else
+    WriteLn('  config:      none found at ', Config.ConfigPath(),
+            ' (using defaults)');
+  WriteLn('  port:        ', Config.Port);
+  WriteLn('  render-jobs: ', Config.RenderJobs);
+  WriteLn('  public:      ', PublicDir);
 
   { --- compose adapters into the port registry --- }
   Ports := TPorts.Create();
