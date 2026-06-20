@@ -62,6 +62,14 @@ type
     function TagCount(const ATag: string): Integer;
     function HasNote(const AId: string): Boolean;
 
+    { Every real note id, in insertion order. Fresh caller-owned list. }
+    function AllNoteIds: TStringList;
+
+    { Find broken cross-references: out-links whose target is not a real note.
+      Fills ASources[i] (the note containing the link) and ATargets[i] (the
+      missing target id) in parallel. Both lists are cleared first. }
+    procedure FindBrokenLinks(ASources, ATargets: TStringList);
+
     property Graph: TLinkGraph read FGraph;
     property Tags: TTagIndex read FTags;
   end;
@@ -261,6 +269,42 @@ end;
 function TChangeProcessor.HasNote(const AId: string): Boolean;
 begin
   Result := FHtml.ContainsKey(AId);
+end;
+
+function TChangeProcessor.AllNoteIds: TStringList;
+var
+  I: Integer;
+begin
+  Result := TStringList.Create();
+  for I := 0 to FHtml.Count - 1 do
+    Result.Add(FHtml.Keys[I]);
+end;
+
+procedure TChangeProcessor.FindBrokenLinks(ASources, ATargets: TStringList);
+var
+  Ids, OutL: TStringList;
+  I, J: Integer;
+  Id, Target: string;
+begin
+  ASources.Clear();
+  ATargets.Clear();
+  Ids := AllNoteIds();
+  for I := 0 to Ids.Count - 1 do
+  begin
+    Id := Ids.Get(I);
+    OutL := OutLinkIds(Id);
+    for J := 0 to OutL.Count - 1 do
+    begin
+      Target := OutL.Get(J);
+      if not HasNote(Target) then
+      begin
+        ASources.Add(Id);
+        ATargets.Add(Target);
+      end;
+    end;
+    OutL.Free();
+  end;
+  Ids.Free();
 end;
 
 end.

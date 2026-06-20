@@ -91,3 +91,10 @@ body {
 }
 
 #luh-copy-input { position: absolute; left: -9999px; }
+
+.luh-broken { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+.luh-broken th, .luh-broken td {
+  text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--luh-border);
+}
+.luh-broken th { color: var(--luh-muted); font-weight: 600; font-size: 0.9rem; }
+.luh-broken code { background: var(--luh-chip); padding: 0.1rem 0.3rem; border-radius: 4px; }

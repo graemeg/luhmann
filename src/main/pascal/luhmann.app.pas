@@ -43,6 +43,7 @@ type
     procedure ServeSearch(ARequest: THttpRequest; AResponse: THttpResponse);
     procedure ServeTagList(const ATag: string; AResponse: THttpResponse);
     procedure ServeAllTags(AResponse: THttpResponse);
+    procedure ServeBroken(AResponse: THttpResponse);
     procedure ApiGraph(ARequest: THttpRequest; AResponse: THttpResponse);
     procedure ApiGraphAll(AResponse: THttpResponse);
     procedure ApiBacklinks(ARequest: THttpRequest; AResponse: THttpResponse);
@@ -224,6 +225,42 @@ begin
   AResponse.SetText(200, 'text/html; charset=utf-8',
     RenderPage('#' + ATag, Html, nil, nil, nil));
   Notes.Free();
+end;
+
+procedure TLuhmannApp.ServeBroken(AResponse: THttpResponse);
+var
+  Sources, Targets: TStringList;
+  I: Integer;
+  Html: string;
+begin
+  Sources := TStringList.Create();
+  Targets := TStringList.Create();
+  FProc.FindBrokenLinks(Sources, Targets);
+
+  Html := '<h1>Broken links</h1>';
+  if Sources.Count = 0 then
+    Html := Html + '<p class="luh-none">No broken links. Every cross-reference ' +
+            'points to an existing note.</p>'
+  else
+  begin
+    Html := Html + '<p>' + IntToStr(Sources.Count) +
+            ' cross-reference(s) point to a note that does not exist. ' +
+            'A leading slash (xref:/path) resolves from the root; without it ' +
+            'the target is resolved relative to the linking note.</p>';
+    Html := Html + '<table class="luh-broken"><tr><th>In note</th>' +
+            '<th>Broken target</th></tr>';
+    for I := 0 to Sources.Count - 1 do
+      Html := Html +
+        '<tr><td><a href="' + NoteUrl(Sources.Get(I)) + '">' +
+        HtmlEscape(FProc.TitleOf(Sources.Get(I))) + '</a></td>' +
+        '<td><code>' + HtmlEscape(Targets.Get(I)) + '</code></td></tr>';
+    Html := Html + '</table>';
+  end;
+
+  AResponse.SetText(200, 'text/html; charset=utf-8',
+    RenderPage('Broken links', Html, nil, nil, nil));
+  Sources.Free();
+  Targets.Free();
 end;
 
 { Emit a graph node object with id, title, tags array and center flag. }
@@ -472,6 +509,8 @@ begin
     ServeAllTags(AResponse)
   else if StartsStr('/tags/', Path) then
     ServeTagList(Copy(Path, 6, Length(Path) - 6), AResponse)
+  else if Path = '/broken' then
+    ServeBroken(AResponse)
 
   { --- static assets (known extensions) --- }
   else if EndsText('.css', Path) or EndsText('.js', Path) or
