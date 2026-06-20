@@ -82,6 +82,11 @@
       cy = cytoscape({
         container: document.getElementById('luh-graph'),
         elements: elements,
+        // Gentler mouse-wheel zoom (default 1 makes one tick a large jump),
+        // with sane limits so you can't zoom to extremes by accident.
+        wheelSensitivity: 0.2,
+        minZoom: 0.2,
+        maxZoom: 3,
         style: [
           { selector: 'node', style: {
               'label': 'data(label)', 'font-size': '11px', 'color': '#1a1a1a',
