@@ -1,4 +1,5 @@
 = Orange
+:tags: fruit
 
 An orange is a fruit of various citrus species in the family Rutaceae (see list
 of plants known as orange); it primarily refers to Citrus × sinensis, which

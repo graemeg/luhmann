@@ -1,4 +1,5 @@
 = Apple
+:tags: fruit
 
 An apple is an edible fruit produced by an apple tree (Malus domestica).
 

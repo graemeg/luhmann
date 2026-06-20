@@ -47,10 +47,15 @@ function JoinList(AList: TStringList; const ASep: string): string;
 { Directory portion of a relative path: 'a/b/c.adoc' -> 'a/b'; 'x.adoc' -> ''. }
 function DirOf(const APath: string): string;
 
+{ Read an entire file as raw bytes, null-bytes preserved (unlike ReadFile,
+  which is text-oriented and stops at the first null). Suitable for binary
+  assets such as images. Returns '' if the file cannot be opened. }
+function ReadBinaryFile(const APath: string): string;
+
 implementation
 
 uses
-  StrUtils, SysUtils;
+  StrUtils, SysUtils, Streams;
 
 function TrimStr(const S: string): string;
 begin
@@ -143,6 +148,28 @@ begin
       Result := Copy(APath, 0, I);
       Exit;
     end;
+end;
+
+function ReadBinaryFile(const APath: string): string;
+var
+  Stream: TFileInputStream;
+  SB: TStringBuilder;
+  Buf: array[0..8191] of Byte;
+  N, I: Integer;
+begin
+  Result := '';
+  if not FileExists(APath) then
+    Exit;
+  Stream := TFileInputStream.Create(APath);
+  SB := TStringBuilder.Create();
+  repeat
+    N := Stream.Read(@Buf[0], 8192);
+    for I := 0 to N - 1 do
+      SB.AppendByte(Buf[I]);
+  until N <= 0;
+  Result := SB.ToString();
+  SB.Free();
+  Stream.Close();
 end;
 
 end.

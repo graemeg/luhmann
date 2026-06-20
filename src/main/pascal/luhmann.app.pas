@@ -148,13 +148,20 @@ begin
     AResponse.SetText(404, 'text/plain', 'not found');
     Exit;
   end;
+  { Look for the asset in the bundled public dir first (CSS, JS, favicon,
+    cytoscape), then fall back to the notes directory so that images and other
+    files living alongside notes (image::apple.jpg) are served too. }
   FullPath := FPublicDir + '/' + Rel;
+  if not FileExists(FullPath) then
+    FullPath := FConfig.RootDir + '/' + Rel;
   if not FileExists(FullPath) then
   begin
     AResponse.SetText(404, 'text/plain', 'not found');
     Exit;
   end;
-  Content := ReadFile(FullPath);
+  { Read as raw bytes so binary assets (images) are not truncated at the first
+    null byte, as a text read would do. }
+  Content := ReadBinaryFile(FullPath);
   AResponse.SetText(200, ContentTypeFor(Rel), Content);
 end;
 

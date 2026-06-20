@@ -1,8 +1,13 @@
 = Example Zettelkasten
+:tags: home
 
 This is an example Zettelkasten to demonstrate Luhmann.
 
-== References
+== Notes
 
 * xref:fruit/apple.adoc[Apple]
 * xref:fruit/orange.adoc[Orange]
+
+== Reference
+
+* link:https://docs.asciidoctor.org/asciidoc/latest/syntax-quick-reference/[AsciiDoc syntax quick reference]
