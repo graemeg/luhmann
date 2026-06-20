@@ -194,6 +194,18 @@ It is deliberately tiny, but it demonstrates the whole idea: atomic notes,
 organised by tags and links rather than folders, with structure emerging from
 the connections between them.
 
+[[keyboard-shortcuts]]
+== Keyboard shortcuts (in the browser)
+
+[cols="1,4", options="header"]
+|===
+| Key | Action
+| `/` | focus the search box
+| `e` | launch the configured editor on the current note
+| `g` | open the graph centred on the current note
+| `Esc` | blur the focused element
+|===
+
 == Configuration
 
 Luhmann runs with sensible defaults; everything is optional.  To override a
@@ -304,15 +316,3 @@ scripts/test.sh
 This compiles and runs every unit-test program under `src/test/pascal`.  The
 network/corpus integration tests (`test_adapters`, `test_http`) are excluded
 from the scripted run and are exercised manually.
-
-[[keyboard-shortcuts]]
-== Keyboard shortcuts (in the browser)
-
-[cols="1,4", options="header"]
-|===
-| Key | Action
-| `/` | focus the search box
-| `e` | launch the configured editor on the current note
-| `g` | open the graph centred on the current note
-| `Esc` | blur the focused element
-|===
