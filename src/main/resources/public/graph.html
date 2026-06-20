@@ -62,11 +62,18 @@
 
     function render(data, centerNote) {
       var elements = [];
+      var present = {};
       (data.nodes || []).forEach(function (n) {
+        present[n.id] = true;
         elements.push({ data: { id: n.id, label: n.title || n.id, center: !!n.center } });
       });
+      // Skip any edge whose endpoints are not both present nodes (e.g. a
+      // dangling xref to a note that does not exist); such an edge would make
+      // cytoscape throw and abort the whole render.
       (data.edges || []).forEach(function (e) {
-        elements.push({ data: { source: e.from, target: e.to } });
+        if (present[e.from] && present[e.to]) {
+          elements.push({ data: { source: e.from, target: e.to } });
+        }
       });
 
       document.getElementById('luh-graph-title').textContent =

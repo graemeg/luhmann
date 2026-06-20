@@ -357,10 +357,16 @@ begin
     OutE := FProc.OutLinkIds(Id);
     for J := 0 to OutE.Count - 1 do
     begin
-      W.BeginObject();
-      W.StrField('from', Id);
-      W.StrField('to', OutE.Get(J));
-      W.EndObject();
+      { Only emit an edge when its target is also a real node. A dangling
+        xref (a link to a note that does not exist) would otherwise produce
+        an edge with a nonexistent endpoint, which the graph renderer rejects. }
+      if Notes.IndexOf(OutE.Get(J)) >= 0 then
+      begin
+        W.BeginObject();
+        W.StrField('from', Id);
+        W.StrField('to', OutE.Get(J));
+        W.EndObject();
+      end;
     end;
     OutE.Free();
   end;
