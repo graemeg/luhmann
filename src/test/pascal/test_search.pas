@@ -50,6 +50,27 @@ begin
   Check('citrus -> orange only', (hits.Count = 1) and (hits[0].Id = 'fruit/orange.adoc'));
   hits.Free();
 
+  { Prefix matching: a partial word finds notes containing a word that starts
+    with it. 'app' must find Apple (from 'apple'). }
+  hits := Idx.Search('app');
+  Check('prefix app -> apple', hits.Count = 1);
+  hits.Free();
+
+  { Explicit wildcard '*' behaves like the bare prefix. }
+  hits := Idx.Search('cit*');
+  Check('wildcard cit* -> orange (citrus)', (hits.Count = 1) and (hits[0].Id = 'fruit/orange.adoc'));
+  hits.Free();
+
+  { A full word still matches itself. }
+  hits := Idx.Search('orange');
+  Check('full word orange -> orange', (hits.Count = 1) and (hits[0].Id = 'fruit/orange.adoc'));
+  hits.Free();
+
+  { A prefix matching nothing returns no hits. }
+  hits := Idx.Search('zzz');
+  Check('no match for zzz', hits.Count = 0);
+  hits.Free();
+
   Idx.Remove('fruit/apple.adoc');
   hits := Idx.Search('apple');
   Check('apple gone after remove', hits.Count = 0);

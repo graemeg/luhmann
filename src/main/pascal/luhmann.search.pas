@@ -321,7 +321,7 @@ function TInMemorySearchIndex.Search(const AQuery: string): TSearchHitList;
 var
   Terms: TStringList;
   Scores: TOrderedDictionary<string, Integer>;
-  I, J, K, Sc, BestIdx, BestScore: Integer;
+  I, J, K, Sc, BestIdx, BestScore, IdxTerm: Integer;
   Term, Id, Body, Title: string;
   Plist: TList<TPosting>;
   P: TPosting;
@@ -337,19 +337,30 @@ begin
     Exit;
   end;
 
-  { Accumulate a score per note = sum of term frequencies. }
+  { Accumulate a score per note. Each query term matches any indexed term that
+    starts with it (prefix search), so 'zet' or 'zet*' finds 'zettelkasten'. A
+    trailing '*' on the query term is treated as an explicit wildcard and
+    stripped. A full word still matches itself (it is a prefix of itself). }
   Scores := TOrderedDictionary<string, Integer>.Create();
   for I := 0 to Terms.Count - 1 do
   begin
     Term := Terms.Get(I);
-    if FTerms.TryGetValue(Term, Plist) then
-      for J := 0 to Plist.Count - 1 do
+    if (Length(Term) > 0) and (Byte(Term[Length(Term) - 1]) = 42) then  { trailing '*' }
+      Term := Copy(Term, 0, Length(Term) - 1);
+    if Term = '' then
+      Continue;
+    for IdxTerm := 0 to FTerms.Count - 1 do
+      if StartsStr(Term, FTerms.Keys[IdxTerm]) then
       begin
-        P := Plist[J];
-        if Scores.TryGetValue(P.NoteId, Cur) then
-          Scores.SetItem(P.NoteId, Cur + P.Freq)
-        else
-          Scores.Add(P.NoteId, P.Freq);
+        Plist := FTerms.Values[IdxTerm];
+        for J := 0 to Plist.Count - 1 do
+        begin
+          P := Plist[J];
+          if Scores.TryGetValue(P.NoteId, Cur) then
+            Scores.SetItem(P.NoteId, Cur + P.Freq)
+          else
+            Scores.Add(P.NoteId, P.Freq);
+        end;
       end;
   end;
 
