@@ -14,7 +14,7 @@ program Luhmann;
 uses
   Classes,
   Luhmann.Util,
-  Luhmann.Libc,
+  Net.Sockets,
   Luhmann.Ports,
   Luhmann.Model,
   Luhmann.Config,

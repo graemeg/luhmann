@@ -72,8 +72,12 @@ uses
   StrUtils,
   Generics.Collections,
   Process,
-  Luhmann.Util,
-  Luhmann.Libc;
+  Luhmann.Util;
+
+{ The logger writes diagnostic lines to stderr (fd 2). That is process I/O, not
+  networking, so it uses a local write(2) binding rather than Net.Sockets. }
+function c_write(AFd: Integer; ABuf: Pointer; ACount: Int64): Int64;
+  external name 'write';
 
 { ---- helpers ---- }
 

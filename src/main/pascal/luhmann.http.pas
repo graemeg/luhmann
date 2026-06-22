@@ -91,17 +91,13 @@ implementation
 uses
   StrUtils,
   Luhmann.Util,
-  Luhmann.Libc,
+  Net.Sockets,
   Security.Crypto,
   Encoding.Base64;
 
 const
   WS_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
   RECV_BUF = 8192;
-  F_SETFL = 4;
-  O_NONBLOCK = 2048;   { Linux x86_64: 0x800 }
-
-function c_fcntl(Fd, Cmd, Arg: Integer): Integer; external name 'fcntl';
 
 { ---- THttpRequest ---- }
 
@@ -290,14 +286,14 @@ end;
 destructor THttpServer.Destroy;
 begin
   if FListenFd >= 0 then
-    c_close(FListenFd);
+    Close(FListenFd);
   FWsClients.Free();
   inherited Destroy;
 end;
 
 function THttpServer.Start: Boolean;
 begin
-  FListenFd := ListenLocal(FPort, 64);
+  FListenFd := TcpListenLocal(FPort, 64);
   Result := FListenFd >= 0;
   FRunning := Result;
 end;
@@ -315,10 +311,10 @@ begin
   SB := TStringBuilder.Create();
   while True do
   begin
-    N := c_recv(AConnFd, @Buf[0], RECV_BUF, 0);
+    N := Recv(AConnFd, @Buf[0], RECV_BUF, 0);
     if N <= 0 then
       Break;
-    SB.Append(BytesToStr(@Buf[0], N));
+    SB.Append(BytesToString(@Buf[0], N));
     Acc := SB.ToString();
     HeadEnd := PosFrom(#13#10#13#10, Acc, 0);
     if HeadEnd >= 0 then
@@ -361,9 +357,9 @@ begin
           'Content-Length: ' + IntToStr(Length(AResp.Body)) + #13#10 +
           'Connection: close' + #13#10 +
           #13#10;
-  SendStr(AConnFd, Head);
+  SendAll(AConnFd, Head);
   if Length(AResp.Body) > 0 then
-    SendStr(AConnFd, AResp.Body);
+    SendAll(AConnFd, AResp.Body);
 end;
 
 procedure THttpServer.DoWebSocketHandshake(AConnFd: Integer; const AKey: string);
@@ -376,7 +372,7 @@ begin
           'Connection: Upgrade' + #13#10 +
           'Sec-WebSocket-Accept: ' + Accept + #13#10 +
           #13#10;
-  SendStr(AConnFd, Head);
+  SendAll(AConnFd, Head);
   { Keep the connection open and remember it for reload pushes. The fd is left
     open deliberately (it is not closed by ServeOnce in the websocket case). }
   FWsClients.Add(AConnFd);
@@ -385,7 +381,7 @@ end;
 procedure THttpServer.SetNonBlocking;
 begin
   if FListenFd >= 0 then
-    c_fcntl(FListenFd, F_SETFL, O_NONBLOCK);
+    MakeNonBlocking(FListenFd);
 end;
 
 procedure THttpServer.ServeConn(AConnFd: Integer; AHandler: IRequestHandler);
@@ -410,14 +406,14 @@ begin
   SendResponse(AConnFd, Resp);
   Resp.Free();
   Req.Free();
-  c_close(AConnFd);
+  Close(AConnFd);
 end;
 
 procedure THttpServer.ServeOnce(AHandler: IRequestHandler);
 var
   ConnFd: Integer;
 begin
-  ConnFd := c_accept(FListenFd, nil, nil);
+  ConnFd := AcceptConn(FListenFd);
   if ConnFd < 0 then
     Exit;
   ServeConn(ConnFd, AHandler);
@@ -427,7 +423,7 @@ function THttpServer.PollOnce(AHandler: IRequestHandler): Boolean;
 var
   ConnFd: Integer;
 begin
-  ConnFd := c_accept(FListenFd, nil, nil);
+  ConnFd := AcceptConn(FListenFd);
   if ConnFd < 0 then
   begin
     Result := False;
@@ -448,14 +444,14 @@ begin
   for I := 0 to FWsClients.Count - 1 do
   begin
     Fd := FWsClients.Get(I);
-    if not SendStr(Fd, Frame) then
+    if not SendAll(Fd, Frame) then
       Dead.Add(Fd);
   end;
   { drop sockets that failed to receive }
   for I := 0 to Dead.Count - 1 do
   begin
     Fd := Dead.Get(I);
-    c_close(Fd);
+    Close(Fd);
     FWsClients.Delete(FWsClients.IndexOf(Fd));
   end;
   Dead.Free();
