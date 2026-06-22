@@ -92,11 +92,9 @@ uses
   StrUtils,
   Luhmann.Util,
   Net.Sockets,
-  Security.Crypto,
-  Encoding.Base64;
+  Net.WebSockets;
 
 const
-  WS_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
   RECV_BUF = 8192;
 
 { ---- THttpRequest ---- }
@@ -326,19 +324,6 @@ begin
   SB.Free();
 end;
 
-{ Build an unmasked WebSocket text frame for a short (<126 byte) payload. }
-function BuildTextFrame(const APayload: string): string;
-var
-  SB: TStringBuilder;
-begin
-  SB := TStringBuilder.Create();
-  SB.AppendByte($81);                  { FIN + text opcode }
-  SB.AppendByte(Length(APayload) and $7F);
-  SB.Append(APayload);
-  Result := SB.ToString();
-  SB.Free();
-end;
-
 function StatusText(AStatus: Integer): string;
 begin
   if AStatus = 200 then Result := 'OK'
@@ -366,7 +351,7 @@ procedure THttpServer.DoWebSocketHandshake(AConnFd: Integer; const AKey: string)
 var
   Accept, Head: string;
 begin
-  Accept := Base64Encode(Sha1(AKey + WS_GUID));
+  Accept := WebSocketAccept(AKey);
   Head := 'HTTP/1.1 101 Switching Protocols' + #13#10 +
           'Upgrade: websocket' + #13#10 +
           'Connection: Upgrade' + #13#10 +
@@ -439,7 +424,7 @@ var
   Dead: TList<Integer>;
   Frame: string;
 begin
-  Frame := BuildTextFrame('reload');
+  Frame := EncodeTextFrame('reload');
   Dead := TList<Integer>.Create();
   for I := 0 to FWsClients.Count - 1 do
   begin
