@@ -26,7 +26,7 @@ interface
 
 uses
   Classes,
-  Luhmann.Http,
+  Net.Http.Server,
   Luhmann.Config,
   Luhmann.ChangeProc,
   Luhmann.Ports;

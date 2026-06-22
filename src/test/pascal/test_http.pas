@@ -1,5 +1,5 @@
 program http_test;
-uses Luhmann.Http;
+uses Net.Http.Server;
 type
   TMyHandler = class(IRequestHandler)
     procedure Handle(ARequest: THttpRequest; AResponse: THttpResponse);

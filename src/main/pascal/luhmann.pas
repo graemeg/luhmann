@@ -22,7 +22,7 @@ uses
   Luhmann.Search,
   Luhmann.ChangeProc,
   Luhmann.Watch,
-  Luhmann.Http,
+  Net.Http.Server,
   Luhmann.App;
 
 type
@@ -44,7 +44,7 @@ end;
 
 procedure TServerReloadNotifier.NotifyReload;
 begin
-  FServer.BroadcastReload();
+  FServer.Broadcast('reload');
 end;
 
 procedure ApplyChanges(AProc: TChangeProcessor; ACS: TChangeSet);
