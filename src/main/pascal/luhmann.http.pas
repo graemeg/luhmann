@@ -92,7 +92,8 @@ uses
   StrUtils,
   Luhmann.Util,
   Luhmann.Libc,
-  Luhmann.Crypto;
+  Security.Crypto,
+  Encoding.Base64;
 
 const
   WS_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
@@ -369,7 +370,7 @@ procedure THttpServer.DoWebSocketHandshake(AConnFd: Integer; const AKey: string)
 var
   Accept, Head: string;
 begin
-  Accept := Sha1Base64(AKey + WS_GUID);
+  Accept := Base64Encode(Sha1(AKey + WS_GUID));
   Head := 'HTTP/1.1 101 Switching Protocols' + #13#10 +
           'Upgrade: websocket' + #13#10 +
           'Connection: Upgrade' + #13#10 +
@@ -446,14 +447,14 @@ begin
   Dead := TList<Integer>.Create();
   for I := 0 to FWsClients.Count - 1 do
   begin
-    Fd := FWsClients[I];
+    Fd := FWsClients.Get(I);
     if not SendStr(Fd, Frame) then
       Dead.Add(Fd);
   end;
   { drop sockets that failed to receive }
   for I := 0 to Dead.Count - 1 do
   begin
-    Fd := Dead[I];
+    Fd := Dead.Get(I);
     c_close(Fd);
     FWsClients.Delete(FWsClients.IndexOf(Fd));
   end;
