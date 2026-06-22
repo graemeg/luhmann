@@ -63,7 +63,7 @@ uses
   Luhmann.Util,
   Luhmann.Model,
   Luhmann.Chrome,
-  Luhmann.Json;
+  Json.Writer;
 
 constructor TLuhmannApp.Create(AProc: TChangeProcessor; AConfig: TConfig;
   APorts: TPorts; const APublicDir: string);
@@ -271,31 +271,31 @@ begin
 end;
 
 { Emit a graph node object with id, title, tags array and center flag. }
-procedure WriteNode(W: TJsonWriter; AProc: TChangeProcessor; const AId: string;
+procedure WriteNode(W: TJSONWriter; AProc: TChangeProcessor; const AId: string;
   ACenter: Boolean);
 var
   Tags: TStringList;
   I: Integer;
 begin
   W.BeginObject();
-  W.StrField('id', AId);
-  W.StrField('title', AProc.TitleOf(AId));
-  W.Key('tags');
+  W.WriteString('id', AId);
+  W.WriteString('title', AProc.TitleOf(AId));
+  W.WriteKey('tags');
   W.BeginArray();
   Tags := AProc.TagsOfNote(AId);
   for I := 0 to Tags.Count - 1 do
-    W.StrValue(Tags.Get(I));
+    W.WriteStringValue(Tags.Get(I));
   Tags.Free();
   W.EndArray();
-  W.Key('center');
-  W.BoolValue(ACenter);
+  W.WriteKey('center');
+  W.WriteBoolValue(ACenter);
   W.EndObject();
 end;
 
 procedure TLuhmannApp.ApiGraph(ARequest: THttpRequest; AResponse: THttpResponse);
 var
   Note: string;
-  W: TJsonWriter;
+  W: TJSONWriter;
   OutL, InL, Seen: TStringList;
   I: Integer;
   Nbr: string;
@@ -304,16 +304,16 @@ begin
   if Note = '' then
     Note := 'index.adoc';
 
-  W := TJsonWriter.Create();
+  W := TJSONWriter.Create();
   W.BeginObject();
-  W.StrField('center', Note);
+  W.WriteString('center', Note);
 
   OutL := FProc.OutLinkIds(Note);
   InL := FProc.BacklinkIds(Note);
 
   { nodes: the centre plus all neighbours (deduplicated) }
   Seen := TStringList.Create();
-  W.Key('nodes');
+  W.WriteKey('nodes');
   W.BeginArray();
   WriteNode(W, FProc, Note, True);
   Seen.Add(Note);
@@ -338,20 +338,20 @@ begin
   W.EndArray();
 
   { edges: centre -> out, in -> centre }
-  W.Key('edges');
+  W.WriteKey('edges');
   W.BeginArray();
   for I := 0 to OutL.Count - 1 do
   begin
     W.BeginObject();
-    W.StrField('from', Note);
-    W.StrField('to', OutL.Get(I));
+    W.WriteString('from', Note);
+    W.WriteString('to', OutL.Get(I));
     W.EndObject();
   end;
   for I := 0 to InL.Count - 1 do
   begin
     W.BeginObject();
-    W.StrField('from', InL.Get(I));
-    W.StrField('to', Note);
+    W.WriteString('from', InL.Get(I));
+    W.WriteString('to', Note);
     W.EndObject();
   end;
   W.EndArray();
@@ -364,15 +364,15 @@ end;
 
 procedure TLuhmannApp.ApiGraphAll(AResponse: THttpResponse);
 var
-  W: TJsonWriter;
+  W: TJSONWriter;
   Tags, Notes, OutE: TStringList;
   I, J: Integer;
   Id: string;
 begin
   { Build the whole-corpus graph by walking every note's out-links. }
-  W := TJsonWriter.Create();
+  W := TJSONWriter.Create();
   W.BeginObject();
-  W.StrField('center', '');
+  W.WriteString('center', '');
 
   { collect all note ids via the tag index (every note has >=1 tag) }
   Notes := TStringList.Create();
@@ -387,13 +387,13 @@ begin
   end;
   Tags.Free();
 
-  W.Key('nodes');
+  W.WriteKey('nodes');
   W.BeginArray();
   for I := 0 to Notes.Count - 1 do
     WriteNode(W, FProc, Notes.Get(I), False);
   W.EndArray();
 
-  W.Key('edges');
+  W.WriteKey('edges');
   W.BeginArray();
   for I := 0 to Notes.Count - 1 do
   begin
@@ -407,8 +407,8 @@ begin
       if Notes.IndexOf(OutE.Get(J)) >= 0 then
       begin
         W.BeginObject();
-        W.StrField('from', Id);
-        W.StrField('to', OutE.Get(J));
+        W.WriteString('from', Id);
+        W.WriteString('to', OutE.Get(J));
         W.EndObject();
       end;
     end;
@@ -425,21 +425,21 @@ end;
 procedure TLuhmannApp.ApiBacklinks(ARequest: THttpRequest; AResponse: THttpResponse);
 var
   Note: string;
-  W: TJsonWriter;
+  W: TJSONWriter;
   Ids: TStringList;
   I: Integer;
   Id: string;
 begin
   Note := ARequest.QueryParam('note');
   Ids := FProc.BacklinkIds(Note);
-  W := TJsonWriter.Create();
+  W := TJSONWriter.Create();
   W.BeginArray();
   for I := 0 to Ids.Count - 1 do
   begin
     Id := Ids.Get(I);
     W.BeginObject();
-    W.StrField('note', Id);
-    W.StrField('title', FProc.TitleOf(Id));
+    W.WriteString('note', Id);
+    W.WriteString('title', FProc.TitleOf(Id));
     W.EndObject();
   end;
   W.EndArray();
@@ -450,20 +450,20 @@ end;
 
 procedure TLuhmannApp.ApiTags(AResponse: THttpResponse);
 var
-  W: TJsonWriter;
+  W: TJSONWriter;
   Tags: TStringList;
   I: Integer;
   Tag: string;
 begin
   Tags := FProc.AllTags();
-  W := TJsonWriter.Create();
+  W := TJSONWriter.Create();
   W.BeginArray();
   for I := 0 to Tags.Count - 1 do
   begin
     Tag := Tags.Get(I);
     W.BeginObject();
-    W.StrField('tag', Tag);
-    W.IntField('count', FProc.TagCount(Tag));
+    W.WriteString('tag', Tag);
+    W.WriteInt('count', FProc.TagCount(Tag));
     W.EndObject();
   end;
   W.EndArray();
