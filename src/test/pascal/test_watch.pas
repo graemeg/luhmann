@@ -1,5 +1,5 @@
 program watch_test;
-uses Classes, Luhmann.Ports, Luhmann.Adapters, Luhmann.Watch;
+uses Luhmann.Ports, Luhmann.Adapters, Luhmann.Watch;
 var Pass, Fail: Integer;
 procedure Check(const AName: string; ACond: Boolean);
 begin
@@ -22,22 +22,18 @@ begin
   W.Prime();
 
   cs := W.Poll();
-  Check('no changes after prime', cs.IsEmpty()); cs.Free();
+  Check('no changes after prime', cs.IsEmpty());
 
   WriteFile('/tmp/luh-watch/c.adoc', '= C');
   cs := W.Poll();
   Check('1 created', cs.Created.Count = 1);
   Check('created is c', (cs.Created.Count=1) and (cs.Created.Get(0) = 'c.adoc'));
-  cs.Free();
 
   DeleteFile('/tmp/luh-watch/a.adoc');
   cs := W.Poll();
   Check('1 deleted', cs.Deleted.Count = 1);
   Check('deleted is a', (cs.Deleted.Count=1) and (cs.Deleted.Get(0) = 'a.adoc'));
-  cs.Free();
 
-  W.Free();
-  Ports.Free();
   WriteLn(''); WriteLn('PASS=',Pass,' FAIL=',Fail);
   if Fail>0 then Halt(1);
 end.

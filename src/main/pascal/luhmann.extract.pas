@@ -18,19 +18,19 @@ unit Luhmann.Extract;
 interface
 
 uses
-  Classes;
+  Generics.Collections;
 
 { First level-0 title ('= Title') found, or '' if none. }
 function ExtractTitle(const ASource: string): string;
 
 { Tags declared via ':tags:'. Lower-cased, de-duplicated, insertion order
   preserved. Caller owns the returned list. }
-function ExtractTags(const ASource: string): TStringList;
+function ExtractTags(const ASource: string): TList<string>;
 
 { Outbound note references (xref: / link: targets ending in .adoc), normalised
   relative to ABaseDir (the directory of the referencing note). Caller owns the
   returned list. }
-function ExtractOutLinks(const ASource, ABaseDir: string): TStringList;
+function ExtractOutLinks(const ASource, ABaseDir: string): TList<string>;
 
 { Normalise a possibly-relative reference target against a base directory,
   collapsing '.' and '..' segments. Exposed for testing. }
@@ -43,7 +43,7 @@ uses
 
 function ExtractTitle(const ASource: string): string;
 var
-  Lines: TStringList;
+  Lines: TList<string>;
   I: Integer;
   Ln: string;
 begin
@@ -58,17 +58,16 @@ begin
       Break;
     end;
   end;
-  Lines.Free();
 end;
 
-function ExtractTags(const ASource: string): TStringList;
+function ExtractTags(const ASource: string): TList<string>;
 var
-  Lines: TStringList;
-  Parts: TStringList;
+  Lines: TList<string>;
+  Parts: TList<string>;
   I, J: Integer;
   Ln, Rest, Tag: string;
 begin
-  Result := TStringList.Create();
+  Result := TList<string>.Create();
   Lines := SplitLines(ASource);
   for I := 0 to Lines.Count - 1 do
   begin
@@ -83,10 +82,8 @@ begin
         if (Tag <> '') and (Result.IndexOf(Tag) < 0) then
           Result.Add(Tag);
       end;
-      Parts.Free();
     end;
   end;
-  Lines.Free();
   { The :tags: attribute is the canonical, unambiguous form. Inline hashtags
     can be added later without changing this contract. }
 end;
@@ -94,8 +91,8 @@ end;
 function NormaliseRef(const ABaseDir, ATarget: string): string;
 var
   Combined: string;
-  Segs: TStringList;
-  Outp: TStringList;
+  Segs: TList<string>;
+  Outp: TList<string>;
   I: Integer;
   Seg: string;
 begin
@@ -107,7 +104,7 @@ begin
     Combined := ABaseDir + '/' + ATarget;
 
   Segs := SplitChar(Combined, CH_SLASH);
-  Outp := TStringList.Create();
+  Outp := TList<string>.Create();
   for I := 0 to Segs.Count - 1 do
   begin
     Seg := Segs.Get(I);
@@ -122,8 +119,6 @@ begin
       Outp.Add(Seg);
   end;
   Result := JoinList(Outp, '/');
-  Segs.Free();
-  Outp.Free();
 end;
 
 { Scan for a macro of the form NAME:TARGET[...] starting at byte position
@@ -157,7 +152,7 @@ begin
   ANextPos := N;
 end;
 
-procedure ScanMacro(const ASource, AMacro, ABaseDir: string; AResult: TStringList);
+procedure ScanMacro(const ASource, AMacro, ABaseDir: string; AResult: TList<string>);
 var
   Pos0, MacroLen, Next: Integer;
   Target, NoteId: string;
@@ -177,9 +172,9 @@ begin
   end;
 end;
 
-function ExtractOutLinks(const ASource, ABaseDir: string): TStringList;
+function ExtractOutLinks(const ASource, ABaseDir: string): TList<string>;
 begin
-  Result := TStringList.Create();
+  Result := TList<string>.Create();
   ScanMacro(ASource, 'xref:', ABaseDir, Result);
   ScanMacro(ASource, 'link:', ABaseDir, Result);
 end;

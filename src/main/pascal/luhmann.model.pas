@@ -31,7 +31,6 @@ type
     OutLinks:  TList<string>; { NoteIds this note references (xref targets) }
     LastMtime: Int64;
     constructor Create(const AId: string);
-    destructor Destroy; override;
   end;
 
   { A scored search hit. }
@@ -54,7 +53,6 @@ type
     function GetCount: Integer;
   public
     constructor Create;
-    destructor Destroy; override;
     procedure Add(AHit: TSearchHit);
     property Items[AIndex: Integer]: TSearchHit read GetItem; default;
     property Count: Integer read GetCount;
@@ -82,13 +80,6 @@ begin
   LastMtime := 0;
 end;
 
-destructor TNote.Destroy;
-begin
-  Tags.Free();
-  OutLinks.Free();
-  inherited Destroy;
-end;
-
 constructor TSearchHit.Create;
 begin
   Id := '';
@@ -100,20 +91,6 @@ end;
 constructor TSearchHitList.Create;
 begin
   FItems := TList<TSearchHit>.Create();
-end;
-
-destructor TSearchHitList.Destroy;
-var
-  I: Integer;
-  H: TSearchHit;
-begin
-  for I := 0 to FItems.Count - 1 do
-  begin
-    H := FItems[I];
-    H.Free();
-  end;
-  FItems.Free();
-  inherited Destroy;
 end;
 
 procedure TSearchHitList.Add(AHit: TSearchHit);

@@ -11,7 +11,6 @@ unit Luhmann.TagIndex;
 interface
 
 uses
-  Classes,
   Generics.Collections;
 
 type
@@ -26,22 +25,21 @@ type
     procedure DetachNote(const ANoteId: string);
   public
     constructor Create(const ACatchAll: string);
-    destructor Destroy; override;
 
     { Replace the tag set for a note. An empty ATags assigns the catch-all. }
-    procedure SetTags(const ANoteId: string; ATags: TStringList);
+    procedure SetTags(const ANoteId: string; ATags: TList<string>);
 
     { Drop a note from the index entirely. }
     procedure RemoveNote(const ANoteId: string);
 
     { Distinct tag names, in insertion order. Fresh caller-owned list. }
-    function AllTags: TStringList;
+    function AllTags: TList<string>;
 
     { Note ids carrying a tag. Fresh caller-owned list (empty if unknown). }
-    function NotesWithTag(const ATag: string): TStringList;
+    function NotesWithTag(const ATag: string): TList<string>;
 
     { Tags of a note. Fresh caller-owned list. }
-    function TagsOf(const ANoteId: string): TStringList;
+    function TagsOf(const ANoteId: string): TList<string>;
 
     { Number of notes carrying a tag (0 if unknown). }
     function CountForTag(const ATag: string): Integer;
@@ -61,34 +59,10 @@ begin
   FNoteToTags := TOrderedDictionary<string, TList<string>>.Create();
 end;
 
-destructor TTagIndex.Destroy;
-begin
-  Clear();
-  FTagToNotes.Free();
-  FNoteToTags.Free();
-  inherited Destroy;
-end;
-
 procedure TTagIndex.Clear;
-var
-  I: Integer;
-  Lst: TList<string>;
 begin
-  { TOrderedDictionary has no Clear; free value lists then rebuild empty. }
-  for I := 0 to FTagToNotes.Count - 1 do
-  begin
-    Lst := FTagToNotes.Values[I];
-    Lst.Free();
-  end;
-  FTagToNotes.Free();
+  { TOrderedDictionary has no Clear; rebuild empty. }
   FTagToNotes := TOrderedDictionary<string, TList<string>>.Create();
-
-  for I := 0 to FNoteToTags.Count - 1 do
-  begin
-    Lst := FNoteToTags.Values[I];
-    Lst.Free();
-  end;
-  FNoteToTags.Free();
   FNoteToTags := TOrderedDictionary<string, TList<string>>.Create();
 end;
 
@@ -127,7 +101,7 @@ begin
   OldTags.Clear();
 end;
 
-procedure TTagIndex.SetTags(const ANoteId: string; ATags: TStringList);
+procedure TTagIndex.SetTags(const ANoteId: string; ATags: TList<string>);
 var
   NoteTags, Notes: TList<string>;
   I: Integer;
@@ -171,38 +145,35 @@ var
 begin
   DetachNote(ANoteId);
   if FNoteToTags.TryGetValue(ANoteId, NoteTags) then
-  begin
-    NoteTags.Free();
     FNoteToTags.Remove(ANoteId);
-  end;
 end;
 
-function TTagIndex.AllTags: TStringList;
+function TTagIndex.AllTags: TList<string>;
 var
   I: Integer;
 begin
-  Result := TStringList.Create();
+  Result := TList<string>.Create();
   for I := 0 to FTagToNotes.Count - 1 do
     Result.Add(FTagToNotes.Keys[I]);
 end;
 
-function TTagIndex.NotesWithTag(const ATag: string): TStringList;
+function TTagIndex.NotesWithTag(const ATag: string): TList<string>;
 var
   Notes: TList<string>;
   I: Integer;
 begin
-  Result := TStringList.Create();
+  Result := TList<string>.Create();
   if FTagToNotes.TryGetValue(ATag, Notes) then
     for I := 0 to Notes.Count - 1 do
       Result.Add(Notes[I]);
 end;
 
-function TTagIndex.TagsOf(const ANoteId: string): TStringList;
+function TTagIndex.TagsOf(const ANoteId: string): TList<string>;
 var
   Tags: TList<string>;
   I: Integer;
 begin
-  Result := TStringList.Create();
+  Result := TList<string>.Create();
   if FNoteToTags.TryGetValue(ANoteId, Tags) then
     for I := 0 to Tags.Count - 1 do
       Result.Add(Tags[I]);

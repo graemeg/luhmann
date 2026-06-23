@@ -1,5 +1,5 @@
 program extract_test;
-uses Classes, Luhmann.Extract, Luhmann.Util;
+uses Generics.Collections, Luhmann.Extract, Luhmann.Util;
 var Pass, Fail: Integer;
 procedure Check(const AName: string; ACond: Boolean);
 begin
@@ -8,7 +8,7 @@ begin
 end;
 var
   src, baseDir: string;
-  tags, links: TStringList;
+  tags, links: TList<string>;
 begin
   Pass:=0; Fail:=0;
   src := '= Apple Title'#10':tags: Fruit, Pome , edible'#10#10'Body text.'#10
@@ -21,13 +21,11 @@ begin
   tags := ExtractTags(src);
   Check('3 tags', tags.Count = 3);
   Check('lowercased+trimmed', (tags.Get(0)='fruit') and (tags.Get(1)='pome') and (tags.Get(2)='edible'));
-  tags.Free();
 
   links := ExtractOutLinks(src, baseDir);
   WriteLn('  links found: ', links.Count);
   Check('orange resolved', links.IndexOf('fruit/orange.adoc') >= 0);
   Check('carrot via .. resolved', links.IndexOf('veg/carrot.adoc') >= 0);
-  links.Free();
 
   Check('norm simple', NormaliseRef('fruit', 'orange.adoc') = 'fruit/orange.adoc');
   Check('norm ..', NormaliseRef('a/b', '../c.adoc') = 'a/c.adoc');

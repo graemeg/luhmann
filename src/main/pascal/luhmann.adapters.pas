@@ -16,6 +16,7 @@ interface
 
 uses
   Classes,
+  Generics.Collections,
   Luhmann.Model,
   Luhmann.Ports;
 
@@ -27,7 +28,7 @@ type
     FRoot: string;   { absolute, no trailing slash }
   public
     constructor Create(const ARoot: string);
-    function ListNoteIds: TStringList;
+    function ListNoteIds: TList<string>;
     function ReadSource(const AId: string): string;
     function AbsPathOf(const AId: string): string;
     function MtimeOf(const AId: string): Int64;
@@ -46,7 +47,7 @@ type
   public
     constructor Create(const AExe, ATempDir: string; AConcurrency: Integer);
     function Render(const ASource: string): string;
-    procedure RenderMany(ASources: TStringList; AHtmls: TStringList);
+    procedure RenderMany(ASources: TList<string>; AHtmls: TList<string>);
   end;
 
   { Launches an external editor as a detached process. }
@@ -70,7 +71,6 @@ implementation
 
 uses
   StrUtils,
-  Generics.Collections,
   Process,
   Luhmann.Util;
 
@@ -108,8 +108,6 @@ begin
   end;
   P.WaitOnExit();
   Result := SB.ToString();
-  SB.Free();
-  P.Free();
 end;
 
 { ---- TFilesystemNoteRepository ---- }
@@ -127,13 +125,14 @@ begin
   Result := FRoot + '/' + AId;
 end;
 
-function TFilesystemNoteRepository.ListNoteIds: TStringList;
+function TFilesystemNoteRepository.ListNoteIds: TList<string>;
 var
-  Args, Lines: TStringList;
+  Args: TStringList;
+  Lines: TList<string>;
   Raw, Ln: string;
   I, Prefix: Integer;
 begin
-  Result := TStringList.Create();
+  Result := TList<string>.Create();
   { find <root> -path <root>/.luhmann -prune -o -type f -name '*.adoc' -print
     The prune skips the derived '.luhmann' directory (site, tmp, index) so the
     renderer's scratch files never masquerade as notes. }
@@ -149,7 +148,6 @@ begin
   Args.Add('*.adoc');
   Args.Add('-print');
   Raw := RunCapture('/usr/bin/find', Args);
-  Args.Free();
 
   Prefix := Length(FRoot) + 1;   { strip 'FRoot/' to get the relative id }
   Lines := SplitLines(Raw);
@@ -159,7 +157,6 @@ begin
     if (Ln <> '') and (Length(Ln) > Prefix) then
       Result.Add(Copy(Ln, Prefix, Length(Ln) - Prefix));
   end;
-  Lines.Free();
 end;
 
 function TFilesystemNoteRepository.ReadSource(const AId: string): string;
@@ -212,7 +209,6 @@ begin
   Args := TStringList.Create();
   BuildRenderArgs(Args, ATempFile);
   Result := RunCapture(FExe, Args);
-  Args.Free();
 end;
 
 function TAsciidoctorRenderer.Render(const ASource: string): string;
@@ -243,11 +239,10 @@ begin
   end;
   P.WaitOnExit();
   Result := SB.ToString();
-  SB.Free();
 end;
 
-procedure TAsciidoctorRenderer.RenderMany(ASources: TStringList;
-  AHtmls: TStringList);
+procedure TAsciidoctorRenderer.RenderMany(ASources: TList<string>;
+  AHtmls: TList<string>);
 var
   N, Base, K, J, SlotFile: Integer;
   Procs: TList<TProcess>;
@@ -284,11 +279,9 @@ begin
     begin
       P := Procs[J];
       AHtmls.Add(DrainProcess(P));
-      P.Free();
     end;
     Base := Base + K;
   end;
-  Procs.Free();
 end;
 
 { ---- TProcessEditorLauncher ---- }
@@ -300,7 +293,7 @@ end;
 
 function TProcessEditorLauncher.LaunchEditor(const AAbsPath: string): Boolean;
 var
-  Parts: TStringList;
+  Parts: TList<string>;
   P: TProcess;
   I: Integer;
 begin
@@ -320,8 +313,6 @@ begin
   P.Parameters.Add(AAbsPath);
   P.Execute();
   { Do not WaitOnExit: the editor runs independently of the server. }
-  P.Free();
-  Parts.Free();
   Result := True;
 end;
 

@@ -40,7 +40,7 @@ type
 implementation
 
 uses
-  Classes,
+  Generics.Collections,
   StrUtils,
   Luhmann.Util;
 
@@ -102,7 +102,7 @@ end;
 function TConfig.LoadOverrides: Boolean;
 var
   Path, Content, Line, Key, Val: string;
-  Lines: TStringList;
+  Lines: TList<string>;
   I, Eq: Integer;
 begin
   Path := ConfigPath();
@@ -136,7 +136,6 @@ begin
     else if Key = 'render-jobs' then
       RenderJobs := StrToIntDef(Val, RenderJobs);
   end;
-  Lines.Free();
   Result := True;
 end;
 

@@ -1,12 +1,12 @@
 program proc_test;
-uses Classes, Generics.Collections, Luhmann.Model, Luhmann.Ports, Luhmann.ChangeProc;
+uses Generics.Collections, Luhmann.Model, Luhmann.Ports, Luhmann.ChangeProc;
 
 type
   TFakeRepo = class(INoteRepository)
   public
     Sources: TOrderedDictionary<string, string>;
     constructor Create;
-    function ListNoteIds: TStringList;
+    function ListNoteIds: TList<string>;
     function ReadSource(const AId: string): string;
     function AbsPathOf(const AId: string): string;
     function MtimeOf(const AId: string): Int64;
@@ -14,7 +14,7 @@ type
   end;
   TFakeRenderer = class(IAsciiDocRenderer)
     function Render(const ASource: string): string;
-    procedure RenderMany(ASources: TStringList; AHtmls: TStringList);
+    procedure RenderMany(ASources: TList<string>; AHtmls: TList<string>);
   end;
   TFakeIndex = class(ISearchIndex)
   public
@@ -32,9 +32,9 @@ type
 
 constructor TFakeRepo.Create;
 begin Sources := TOrderedDictionary<string, string>.Create(); end;
-function TFakeRepo.ListNoteIds: TStringList;
+function TFakeRepo.ListNoteIds: TList<string>;
 var i: Integer;
-begin Result := TStringList.Create();
+begin Result := TList<string>.Create();
   for i := 0 to Sources.Count - 1 do Result.Add(Sources.Keys[i]); end;
 function TFakeRepo.ReadSource(const AId: string): string;
 begin if not Sources.TryGetValue(AId, Result) then Result := ''; end;
@@ -43,7 +43,7 @@ function TFakeRepo.MtimeOf(const AId: string): Int64; begin Result := 1; end;
 function TFakeRepo.Exists(const AId: string): Boolean; begin Result := Sources.ContainsKey(AId); end;
 function TFakeRenderer.Render(const ASource: string): string;
 begin Result := '<body><div id="content">' + ASource + '</div></body>'; end;
-procedure TFakeRenderer.RenderMany(ASources: TStringList; AHtmls: TStringList);
+procedure TFakeRenderer.RenderMany(ASources: TList<string>; AHtmls: TList<string>);
 var i: Integer;
 begin
   AHtmls.Clear();
@@ -70,7 +70,7 @@ var
   IdxImpl: TFakeIndex;
   RelImpl: TCountReload;
   Proc: TChangeProcessor;
-  bl, tags, notes: TStringList;
+  bl, tags, notes: TList<string>;
 begin
   Pass:=0; Fail:=0;
   RepoImpl := TFakeRepo.Create();
@@ -99,21 +99,18 @@ begin
   Check('html cached', Proc.HtmlOf('index.adoc') <> '');
 
   bl := Proc.BacklinkIds('fruit/orange.adoc');
-  Check('orange has 2 backlinks', bl.Count = 2); bl.Free();
+  Check('orange has 2 backlinks', bl.Count = 2);
   tags := Proc.TagsOfNote('fruit/apple.adoc');
-  Check('apple tagged fruit+pome', tags.Count = 2); tags.Free();
+  Check('apple tagged fruit+pome', tags.Count = 2);
   notes := Proc.NotesForTag('fruit');
-  Check('2 notes tagged fruit', notes.Count = 2); notes.Free();
+  Check('2 notes tagged fruit', notes.Count = 2);
   Check('index is unfiled', Proc.TagCount('unfiled') = 1);
 
   Proc.OnDelete('fruit/apple.adoc');
   Check('reload fired on delete', RelImpl.Count = 1);
   bl := Proc.BacklinkIds('fruit/orange.adoc');
-  Check('orange backlinks -> 1 after apple delete', bl.Count = 1); bl.Free();
+  Check('orange backlinks -> 1 after apple delete', bl.Count = 1);
   Check('apple html gone', Proc.HtmlOf('fruit/apple.adoc') = '');
-
-  Proc.Free();
-  Ports.Free();
 
   WriteLn(''); WriteLn('PASS=',Pass,' FAIL=',Fail);
   if Fail>0 then Halt(1);

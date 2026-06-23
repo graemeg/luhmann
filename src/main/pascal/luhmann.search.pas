@@ -40,10 +40,9 @@ type
     FTitles: TOrderedDictionary<string, string>;
     procedure RemovePostingsFor(const AId: string);
     procedure AddTerm(const ATerm, AId: string);
-    function Snippet(const ABody: string; AQueryTerms: TStringList): string;
+    function Snippet(const ABody: string; AQueryTerms: TList<string>): string;
   public
     constructor Create;
-    destructor Destroy; override;
     procedure Upsert(ANote: TNote);
     procedure Remove(const AId: string);
     procedure Clear;
@@ -55,7 +54,7 @@ function HtmlToText(const AHtml: string): string;
 
 { Tokenise text into lower-cased alphanumeric terms (stop words removed).
   Caller owns the returned list. }
-function Tokenise(const AText: string): TStringList;
+function Tokenise(const AText: string): TList<string>;
 
 implementation
 
@@ -104,17 +103,16 @@ begin
     I := I + 1;
   end;
   Result := SB.ToString();
-  SB.Free();
 end;
 
-function Tokenise(const AText: string): TStringList;
+function Tokenise(const AText: string): TList<string>;
 var
   SB: TStringBuilder;
   I, N: Integer;
   B: Byte;
   Tok: string;
 begin
-  Result := TStringList.Create();
+  Result := TList<string>.Create();
   SB := TStringBuilder.Create();
   N := Length(AText);
   I := 0;
@@ -135,7 +133,6 @@ begin
     end;
     I := I + 1;
   end;
-  SB.Free();
 end;
 
 { ---- TPosting ---- }
@@ -155,37 +152,11 @@ begin
   FTitles := TOrderedDictionary<string, string>.Create();
 end;
 
-destructor TInMemorySearchIndex.Destroy;
-begin
-  Clear();
-  FTerms.Free();
-  FBodies.Free();
-  FTitles.Free();
-  inherited Destroy;
-end;
-
 procedure TInMemorySearchIndex.Clear;
-var
-  I, J: Integer;
-  Plist: TList<TPosting>;
-  P: TPosting;
 begin
-  for I := 0 to FTerms.Count - 1 do
-  begin
-    Plist := FTerms.Values[I];
-    for J := 0 to Plist.Count - 1 do
-    begin
-      P := Plist[J];
-      P.Free();
-    end;
-    Plist.Free();
-  end;
-  FTerms.Free();
   FTerms := TOrderedDictionary<string, TList<TPosting>>.Create();
   { string-valued dicts hold no owned objects; rebuild empty }
-  FBodies.Free();
   FBodies := TOrderedDictionary<string, string>.Create();
-  FTitles.Free();
   FTitles := TOrderedDictionary<string, string>.Create();
 end;
 
@@ -204,7 +175,6 @@ begin
       P := Plist[J];
       if P.NoteId = AId then
       begin
-        P.Free();
         Plist.Delete(J);
       end
       else
@@ -245,7 +215,7 @@ end;
 procedure TInMemorySearchIndex.Upsert(ANote: TNote);
 var
   Text, BodyText: string;
-  Toks: TStringList;
+  Toks: TList<string>;
   I: Integer;
 begin
   RemovePostingsFor(ANote.Id);
@@ -256,7 +226,6 @@ begin
   Toks := Tokenise(Text);
   for I := 0 to Toks.Count - 1 do
     AddTerm(Toks.Get(I), ANote.Id);
-  Toks.Free();
 
   if FBodies.ContainsKey(ANote.Id) then
     FBodies.SetItem(ANote.Id, BodyText)
@@ -278,7 +247,7 @@ begin
 end;
 
 function TInMemorySearchIndex.Snippet(const ABody: string;
-  AQueryTerms: TStringList): string;
+  AQueryTerms: TList<string>): string;
 var
   Lower: string;
   I, Pos0, Start, Stop: Integer;
@@ -322,9 +291,9 @@ end;
   other piece is a prefix match. The piece is then tokenised (which lower-cases
   it and drops punctuation, including the leading '*'), and its first token is
   taken as the term. ATerms[i] holds the term, AModes[i] is 's' or 'p'. }
-procedure ParseQueryTerms(const AQuery: string; ATerms, AModes: TStringList);
+procedure ParseQueryTerms(const AQuery: string; ATerms, AModes: TList<string>);
 var
-  Pieces, Toks: TStringList;
+  Pieces, Toks: TList<string>;
   I: Integer;
   Piece: string;
   Sub: Boolean;
@@ -345,21 +314,19 @@ begin
       else
         AModes.Add('p');
     end;
-    Toks.Free();
   end;
-  Pieces.Free();
 end;
 
 function TInMemorySearchIndex.Search(const AQuery: string): TSearchHitList;
 var
-  Terms, Modes: TStringList;
+  Terms, Modes: TList<string>;
   Scores: TOrderedDictionary<string, Integer>;
   I, J, K, Sc, BestIdx, BestScore, IdxTerm: Integer;
   Term, Id, Body, Title: string;
   Plist: TList<TPosting>;
   P: TPosting;
   Cur: Integer;
-  Used: TStringList;
+  Used: TList<string>;
   Hit: TSearchHit;
   WantSub, Matched: Boolean;
 begin
@@ -369,13 +336,11 @@ begin
     match was requested. A term works as a prefix by default ('zet' finds
     'zettelkasten'); a leading '*' switches it to substring ('*kas' finds
     'zettelkasten'). Modes[i] is 's' for substring or 'p' for prefix. }
-  Terms := TStringList.Create();
-  Modes := TStringList.Create();
+  Terms := TList<string>.Create();
+  Modes := TList<string>.Create();
   ParseQueryTerms(AQuery, Terms, Modes);
   if Terms.Count = 0 then
   begin
-    Terms.Free();
-    Modes.Free();
     Exit;
   end;
 
@@ -407,7 +372,7 @@ begin
 
   { Selection sort by score descending into the result list (corpora are
     small; a full sort is unnecessary). }
-  Used := TStringList.Create();
+  Used := TList<string>.Create();
   for K := 0 to Scores.Count - 1 do
   begin
     BestIdx := -1;
@@ -438,11 +403,6 @@ begin
     Hit.SummaryHtml := Snippet(Body, Terms);
     Result.Add(Hit);
   end;
-
-  Used.Free();
-  Scores.Free();
-  Terms.Free();
-  Modes.Free();
 end;
 
 end.

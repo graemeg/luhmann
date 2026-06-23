@@ -22,7 +22,6 @@ begin
   Check('port override', c.Port = 8080);
   Check('editor override', c.Editor = 'nvim-qt');
   Check('catchall override', c.CatchAll = 'inbox');
-  c.Free();
   WriteLn(''); WriteLn('PASS=',Pass,' FAIL=',Fail);
   if Fail>0 then Halt(1);
 end.

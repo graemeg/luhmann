@@ -23,5 +23,4 @@ begin
   for i := 1 to 3 do
     Srv.ServeOnce(H);
   WriteLn('DONE');
-  Srv.Free();
 end.

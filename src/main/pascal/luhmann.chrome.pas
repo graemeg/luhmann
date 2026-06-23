@@ -16,7 +16,7 @@ unit Luhmann.Chrome;
 interface
 
 uses
-  Classes;
+  Generics.Collections;
 
 { Escape the five XML/HTML special characters in a text value. }
 function HtmlEscape(const S: string): string;
@@ -28,11 +28,11 @@ function HtmlEscape(const S: string): string;
   ABacklinkTitles - parallel list of titles for ABacklinkIds
   ATags         - tags for this note }
 function RenderPage(const ATitle, ABodyHtml: string;
-                    ABacklinkIds, ABacklinkTitles, ATags: TStringList): string;
+                    ABacklinkIds, ABacklinkTitles, ATags: TList<string>): string;
 
 { Build the search results page. }
 function RenderSearchPage(const AQuery: string;
-                          AResultIds, AResultTitles, AResultSnippets: TStringList): string;
+                          AResultIds, AResultTitles, AResultSnippets: TList<string>): string;
 
 { Convert a note id (foo/bar.adoc) to its served URL (/foo/bar.html). }
 function NoteUrl(const AId: string): string;
@@ -65,7 +65,6 @@ begin
     I := I + 1;
   end;
   Result := SB.ToString();
-  SB.Free();
 end;
 
 function NoteUrl(const AId: string): string;
@@ -104,7 +103,7 @@ begin
   Result := '<script src="/luhmann.js"></script></body></html>';
 end;
 
-function RenderTagChips(ATags: TStringList): string;
+function RenderTagChips(ATags: TList<string>): string;
 var
   SB: TStringBuilder;
   I: Integer;
@@ -125,10 +124,9 @@ begin
   end;
   SB.Append('</div>');
   Result := SB.ToString();
-  SB.Free();
 end;
 
-function RenderBacklinks(AIds, ATitles: TStringList): string;
+function RenderBacklinks(AIds, ATitles: TList<string>): string;
 var
   SB: TStringBuilder;
   I: Integer;
@@ -154,7 +152,6 @@ begin
   end;
   SB.Append('</div>');
   Result := SB.ToString();
-  SB.Free();
 end;
 
 { Make external links open in a new tab. Internal note links (from xref:) render
@@ -167,7 +164,7 @@ begin
 end;
 
 function RenderPage(const ATitle, ABodyHtml: string;
-  ABacklinkIds, ABacklinkTitles, ATags: TStringList): string;
+  ABacklinkIds, ABacklinkTitles, ATags: TList<string>): string;
 var
   SB: TStringBuilder;
 begin
@@ -181,11 +178,10 @@ begin
   SB.Append('</div></div>');
   SB.Append(PageFoot());
   Result := SB.ToString();
-  SB.Free();
 end;
 
 function RenderSearchPage(const AQuery: string;
-  AResultIds, AResultTitles, AResultSnippets: TStringList): string;
+  AResultIds, AResultTitles, AResultSnippets: TList<string>): string;
 var
   SB: TStringBuilder;
   I: Integer;
@@ -218,7 +214,6 @@ begin
   SB.Append('</div></div>');
   SB.Append(PageFoot());
   Result := SB.ToString();
-  SB.Free();
 end;
 
 end.

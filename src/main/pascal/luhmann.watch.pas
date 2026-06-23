@@ -17,7 +17,6 @@ unit Luhmann.Watch;
 interface
 
 uses
-  Classes,
   Generics.Collections,
   Luhmann.Ports;
 
@@ -26,11 +25,10 @@ type
     here; the caller frees the returned object (which frees its lists). }
   TChangeSet = class
   public
-    Created:  TStringList;
-    Modified: TStringList;
-    Deleted:  TStringList;
+    Created:  TList<string>;
+    Modified: TList<string>;
+    Deleted:  TList<string>;
     constructor Create;
-    destructor Destroy; override;
     function IsEmpty: Boolean;
   end;
 
@@ -44,7 +42,6 @@ type
     FSeen: TOrderedDictionary<string, Int64>;
   public
     constructor Create(APorts: TPorts);
-    destructor Destroy; override;
     { Establish the initial snapshot without reporting anything (call once
       after the initial build so the first real poll only sees true changes). }
     procedure Prime;
@@ -56,17 +53,9 @@ implementation
 
 constructor TChangeSet.Create;
 begin
-  Created  := TStringList.Create();
-  Modified := TStringList.Create();
-  Deleted  := TStringList.Create();
-end;
-
-destructor TChangeSet.Destroy;
-begin
-  Created.Free();
-  Modified.Free();
-  Deleted.Free();
-  inherited Destroy;
+  Created  := TList<string>.Create();
+  Modified := TList<string>.Create();
+  Deleted  := TList<string>.Create();
 end;
 
 function TChangeSet.IsEmpty: Boolean;
@@ -80,15 +69,9 @@ begin
   FSeen := TOrderedDictionary<string, Int64>.Create();
 end;
 
-destructor TPollingWatcher.Destroy;
-begin
-  FSeen.Free();
-  inherited Destroy;
-end;
-
 procedure TPollingWatcher.Prime;
 var
-  Ids: TStringList;
+  Ids: TList<string>;
   I: Integer;
   Id: string;
 begin
@@ -101,12 +84,11 @@ begin
     else
       FSeen.SetItem(Id, FPorts.Repo.MtimeOf(Id));
   end;
-  Ids.Free();
 end;
 
 function TPollingWatcher.Poll: TChangeSet;
 var
-  Ids, Current: TStringList;
+  Ids, Current: TList<string>;
   I: Integer;
   Id: string;
   Mt, OldMt: Int64;
@@ -115,7 +97,7 @@ begin
   Ids := FPorts.Repo.ListNoteIds();
 
   { Detect creates and modifications. Track which ids exist now. }
-  Current := TStringList.Create();
+  Current := TList<string>.Create();
   for I := 0 to Ids.Count - 1 do
   begin
     Id := Ids.Get(I);
@@ -143,9 +125,6 @@ begin
   end;
   for I := 0 to Result.Deleted.Count - 1 do
     FSeen.Remove(Result.Deleted.Get(I));
-
-  Current.Free();
-  Ids.Free();
 end;
 
 end.

@@ -1,10 +1,10 @@
 program adapt_test;
-uses Classes, Luhmann.Model, Luhmann.Ports, Luhmann.Adapters;
+uses Generics.Collections, Luhmann.Model, Luhmann.Ports, Luhmann.Adapters;
 var
   Repo: INoteRepository;
   Rend: IAsciiDocRenderer;
   Log: ILogger;
-  ids: TStringList;
+  ids: TList<string>;
   i: Integer;
   src, html: string;
 begin
@@ -26,6 +26,4 @@ begin
   html := Rend.Render(src);
   WriteLn('--- rendered index.adoc body ---');
   WriteLn(html);
-
-  ids.Free();
 end.

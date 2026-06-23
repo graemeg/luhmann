@@ -3,15 +3,14 @@
   SPDX-License-Identifier: MIT
 
   luhmann.util - small pure string/path helpers used across the core and
-  adapters.  String lists cross boundaries as TStringList (non-generic) because
-  free functions cannot return a generic instantiation in this compiler.
+  adapters.  String lists cross boundaries as TList<string>.
 }
 unit Luhmann.Util;
 
 interface
 
 uses
-  Classes;
+  Generics.Collections;
 
 const
   { ASCII byte constants. NB: Byte('x') on a char *literal* does NOT yield the
@@ -36,13 +35,13 @@ function LowerStr(const S: string): string;
 function PosFrom(const ASub, S: string; AFrom: Integer): Integer;
 
 { Split S into lines on LF, tolerating CRLF (CR stripped). Caller owns. }
-function SplitLines(const S: string): TStringList;
+function SplitLines(const S: string): TList<string>;
 
 { Split S on a single delimiter byte. Caller owns. }
-function SplitChar(const S: string; ADelim: Byte): TStringList;
+function SplitChar(const S: string; ADelim: Byte): TList<string>;
 
 { Join a list with ASep between items. }
-function JoinList(AList: TStringList; const ASep: string): string;
+function JoinList(AList: TList<string>; const ASep: string): string;
 
 { Directory portion of a relative path: 'a/b/c.adoc' -> 'a/b'; 'x.adoc' -> ''. }
 function DirOf(const APath: string): string;
@@ -82,11 +81,11 @@ begin
     Result := S;
 end;
 
-function SplitLines(const S: string): TStringList;
+function SplitLines(const S: string): TList<string>;
 var
   I, N, Start: Integer;
 begin
-  Result := TStringList.Create();
+  Result := TList<string>.Create();
   N := Length(S);
   Start := 0;
   I := 0;
@@ -102,11 +101,11 @@ begin
   Result.Add(StripCR(Copy(S, Start, N - Start)));
 end;
 
-function SplitChar(const S: string; ADelim: Byte): TStringList;
+function SplitChar(const S: string; ADelim: Byte): TList<string>;
 var
   I, N, Start: Integer;
 begin
-  Result := TStringList.Create();
+  Result := TList<string>.Create();
   N := Length(S);
   Start := 0;
   I := 0;
@@ -122,7 +121,7 @@ begin
   Result.Add(Copy(S, Start, N - Start));
 end;
 
-function JoinList(AList: TStringList; const ASep: string): string;
+function JoinList(AList: TList<string>; const ASep: string): string;
 var
   I: Integer;
 begin
@@ -168,7 +167,6 @@ begin
       SB.AppendByte(Buf[I]);
   until N <= 0;
   Result := SB.ToString();
-  SB.Free();
   Stream.Close();
 end;
 

@@ -1,6 +1,6 @@
 program chrome_test;
-uses Classes, Luhmann.Chrome;
-var Pass, Fail: Integer; page: string; ids, titles, tags: TStringList;
+uses Generics.Collections, Luhmann.Chrome;
+var Pass, Fail: Integer; page: string; ids, titles, tags: TList<string>;
 procedure Check(const AName: string; ACond: Boolean);
 begin
   if ACond then begin Pass:=Pass+1; WriteLn('  ok   ',AName) end
@@ -11,9 +11,9 @@ begin
   Check('escape', HtmlEscape('a<b>&"x') = 'a&lt;b&gt;&amp;&quot;x');
   Check('noteurl', NoteUrl('fruit/apple.adoc') = '/fruit/apple.html');
 
-  ids := TStringList.Create(); ids.Add('index.adoc'); ids.Add('fruit/pear.adoc');
-  titles := TStringList.Create(); titles.Add('Home'); titles.Add('Pear');
-  tags := TStringList.Create(); tags.Add('fruit'); tags.Add('pome');
+  ids := TList<string>.Create(); ids.Add('index.adoc'); ids.Add('fruit/pear.adoc');
+  titles := TList<string>.Create(); titles.Add('Home'); titles.Add('Pear');
+  tags := TList<string>.Create(); tags.Add('fruit'); tags.Add('pome');
 
   page := RenderPage('Apple', '<p>An apple.</p>', ids, titles, tags);
   Check('has doctype', Pos('<!DOCTYPE html>', page) >= 0);
@@ -35,8 +35,6 @@ begin
     Pos('target="_blank" rel="noopener" href="https://example.com"', page) >= 0);
   Check('internal link unchanged',
     Pos('<a href="other.html">', page) >= 0);
-
-  ids.Free(); titles.Free(); tags.Free();
 
   WriteLn(''); WriteLn('PASS=',Pass,' FAIL=',Fail);
   if Fail>0 then Halt(1);

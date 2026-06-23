@@ -25,7 +25,7 @@ unit Luhmann.App;
 interface
 
 uses
-  Classes,
+  Generics.Collections,
   Net.Http.Server,
   Luhmann.Config,
   Luhmann.ChangeProc,
@@ -95,7 +95,7 @@ end;
 procedure TLuhmannApp.ServeNotePage(const AId: string; AResponse: THttpResponse);
 var
   Body, Title: string;
-  BacklinkIds, BacklinkTitles, Tags: TStringList;
+  BacklinkIds, BacklinkTitles, Tags: TList<string>;
   I: Integer;
 begin
   if not FProc.HasNote(AId) then
@@ -111,16 +111,12 @@ begin
   Tags := FProc.TagsOfNote(AId);
 
   { Resolve backlink titles. }
-  BacklinkTitles := TStringList.Create();
+  BacklinkTitles := TList<string>.Create();
   for I := 0 to BacklinkIds.Count - 1 do
     BacklinkTitles.Add(FProc.TitleOf(BacklinkIds.Get(I)));
 
   AResponse.SetText(200, 'text/html; charset=utf-8',
     RenderPage(Title, Body, BacklinkIds, BacklinkTitles, Tags));
-
-  BacklinkIds.Free();
-  BacklinkTitles.Free();
-  Tags.Free();
 end;
 
 function ContentTypeFor(const APath: string): string;
@@ -169,14 +165,14 @@ procedure TLuhmannApp.ServeSearch(ARequest: THttpRequest; AResponse: THttpRespon
 var
   Q: string;
   Hits: TSearchHitList;
-  Ids, Titles, Snips: TStringList;
+  Ids, Titles, Snips: TList<string>;
   I: Integer;
   Hit: TSearchHit;
 begin
   Q := ARequest.QueryParam('q');
-  Ids := TStringList.Create();
-  Titles := TStringList.Create();
-  Snips := TStringList.Create();
+  Ids := TList<string>.Create();
+  Titles := TList<string>.Create();
+  Snips := TList<string>.Create();
   if TrimStr(Q) <> '' then
   begin
     Hits := FPorts.Index.Search(Q);
@@ -187,16 +183,14 @@ begin
       Titles.Add(Hit.Title);
       Snips.Add(Hit.SummaryHtml);
     end;
-    Hits.Free();
   end;
   AResponse.SetText(200, 'text/html; charset=utf-8',
     RenderSearchPage(Q, Ids, Titles, Snips));
-  Ids.Free(); Titles.Free(); Snips.Free();
 end;
 
 procedure TLuhmannApp.ServeAllTags(AResponse: THttpResponse);
 var
-  Tags: TStringList;
+  Tags: TList<string>;
   I: Integer;
   Tag, Html: string;
 begin
@@ -211,12 +205,11 @@ begin
   Html := Html + '</div>';
   AResponse.SetText(200, 'text/html; charset=utf-8',
     RenderPage('Tags', Html, nil, nil, nil));
-  Tags.Free();
 end;
 
 procedure TLuhmannApp.ServeTagList(const ATag: string; AResponse: THttpResponse);
 var
-  Notes: TStringList;
+  Notes: TList<string>;
   I: Integer;
   Id, Html: string;
 begin
@@ -231,17 +224,16 @@ begin
   Html := Html + '</ul>';
   AResponse.SetText(200, 'text/html; charset=utf-8',
     RenderPage('#' + ATag, Html, nil, nil, nil));
-  Notes.Free();
 end;
 
 procedure TLuhmannApp.ServeBroken(AResponse: THttpResponse);
 var
-  Sources, Targets: TStringList;
+  Sources, Targets: TList<string>;
   I: Integer;
   Html: string;
 begin
-  Sources := TStringList.Create();
-  Targets := TStringList.Create();
+  Sources := TList<string>.Create();
+  Targets := TList<string>.Create();
   FProc.FindBrokenLinks(Sources, Targets);
 
   Html := '<h1>Broken links</h1>';
@@ -266,15 +258,13 @@ begin
 
   AResponse.SetText(200, 'text/html; charset=utf-8',
     RenderPage('Broken links', Html, nil, nil, nil));
-  Sources.Free();
-  Targets.Free();
 end;
 
 { Emit a graph node object with id, title, tags array and center flag. }
 procedure WriteNode(W: TJSONWriter; AProc: TChangeProcessor; const AId: string;
   ACenter: Boolean);
 var
-  Tags: TStringList;
+  Tags: TList<string>;
   I: Integer;
 begin
   W.BeginObject();
@@ -285,7 +275,6 @@ begin
   Tags := AProc.TagsOfNote(AId);
   for I := 0 to Tags.Count - 1 do
     W.WriteStringValue(Tags.Get(I));
-  Tags.Free();
   W.EndArray();
   W.WriteKey('center');
   W.WriteBoolValue(ACenter);
@@ -296,7 +285,7 @@ procedure TLuhmannApp.ApiGraph(ARequest: THttpRequest; AResponse: THttpResponse)
 var
   Note: string;
   W: TJSONWriter;
-  OutL, InL, Seen: TStringList;
+  OutL, InL, Seen: TList<string>;
   I: Integer;
   Nbr: string;
 begin
@@ -312,7 +301,7 @@ begin
   InL := FProc.BacklinkIds(Note);
 
   { nodes: the centre plus all neighbours (deduplicated) }
-  Seen := TStringList.Create();
+  Seen := TList<string>.Create();
   W.WriteKey('nodes');
   W.BeginArray();
   WriteNode(W, FProc, Note, True);
@@ -358,14 +347,12 @@ begin
 
   W.EndObject();
   AResponse.SetText(200, 'application/json', W.ToString());
-  W.Free();
-  OutL.Free(); InL.Free(); Seen.Free();
 end;
 
 procedure TLuhmannApp.ApiGraphAll(AResponse: THttpResponse);
 var
   W: TJSONWriter;
-  Tags, Notes, OutE: TStringList;
+  Tags, Notes, OutE: TList<string>;
   I, J: Integer;
   Id: string;
 begin
@@ -375,7 +362,7 @@ begin
   W.WriteString('center', '');
 
   { collect all note ids via the tag index (every note has >=1 tag) }
-  Notes := TStringList.Create();
+  Notes := TList<string>.Create();
   Tags := FProc.AllTags();
   for I := 0 to Tags.Count - 1 do
   begin
@@ -383,9 +370,7 @@ begin
     for J := 0 to OutE.Count - 1 do
       if Notes.IndexOf(OutE.Get(J)) < 0 then
         Notes.Add(OutE.Get(J));
-    OutE.Free();
   end;
-  Tags.Free();
 
   W.WriteKey('nodes');
   W.BeginArray();
@@ -412,21 +397,18 @@ begin
         W.EndObject();
       end;
     end;
-    OutE.Free();
   end;
   W.EndArray();
 
   W.EndObject();
   AResponse.SetText(200, 'application/json', W.ToString());
-  W.Free();
-  Notes.Free();
 end;
 
 procedure TLuhmannApp.ApiBacklinks(ARequest: THttpRequest; AResponse: THttpResponse);
 var
   Note: string;
   W: TJSONWriter;
-  Ids: TStringList;
+  Ids: TList<string>;
   I: Integer;
   Id: string;
 begin
@@ -444,14 +426,12 @@ begin
   end;
   W.EndArray();
   AResponse.SetText(200, 'application/json', W.ToString());
-  W.Free();
-  Ids.Free();
 end;
 
 procedure TLuhmannApp.ApiTags(AResponse: THttpResponse);
 var
   W: TJSONWriter;
-  Tags: TStringList;
+  Tags: TList<string>;
   I: Integer;
   Tag: string;
 begin
@@ -468,8 +448,6 @@ begin
   end;
   W.EndArray();
   AResponse.SetText(200, 'application/json', W.ToString());
-  W.Free();
-  Tags.Free();
 end;
 
 procedure TLuhmannApp.ApiEdit(ARequest: THttpRequest; AResponse: THttpResponse);

@@ -38,7 +38,6 @@ type
     procedure IndexOne(const AId: string);
   public
     constructor Create(APorts: TPorts; const ACatchAll: string);
-    destructor Destroy; override;
 
     { Full build: clear everything and (re)process every note. }
     procedure BuildAll;
@@ -54,21 +53,21 @@ type
     { Rendered HTML document for a note, or '' if unknown. }
     function HtmlOf(const AId: string): string;
     function TitleOf(const AId: string): string;
-    function BacklinkIds(const AId: string): TStringList;
-    function OutLinkIds(const AId: string): TStringList;
-    function TagsOfNote(const AId: string): TStringList;
-    function AllTags: TStringList;
-    function NotesForTag(const ATag: string): TStringList;
+    function BacklinkIds(const AId: string): TList<string>;
+    function OutLinkIds(const AId: string): TList<string>;
+    function TagsOfNote(const AId: string): TList<string>;
+    function AllTags: TList<string>;
+    function NotesForTag(const ATag: string): TList<string>;
     function TagCount(const ATag: string): Integer;
     function HasNote(const AId: string): Boolean;
 
     { Every real note id, in insertion order. Fresh caller-owned list. }
-    function AllNoteIds: TStringList;
+    function AllNoteIds: TList<string>;
 
     { Find broken cross-references: out-links whose target is not a real note.
       Fills ASources[i] (the note containing the link) and ATargets[i] (the
       missing target id) in parallel. Both lists are cleared first. }
-    procedure FindBrokenLinks(ASources, ATargets: TStringList);
+    procedure FindBrokenLinks(ASources, ATargets: TList<string>);
 
     property Graph: TLinkGraph read FGraph;
     property Tags: TTagIndex read FTags;
@@ -96,22 +95,13 @@ begin
   FTitles := TOrderedDictionary<string, string>.Create();
 end;
 
-destructor TChangeProcessor.Destroy;
-begin
-  FGraph.Free();
-  FTags.Free();
-  FHtml.Free();
-  FTitles.Free();
-  inherited Destroy;
-end;
-
 { Update all derived structures for a note given its already-known source and
   rendered HTML. The render (the slow step) is done by the caller, so this is
   pure in-memory work and is shared by the serial and parallel build paths. }
 procedure TChangeProcessor.IndexWith(const AId, ASource, AHtml: string);
 var
   Title, BaseDir: string;
-  Tags, Links: TStringList;
+  Tags, Links: TList<string>;
   Note: TNote;
   I: Integer;
 begin
@@ -141,10 +131,6 @@ begin
   for I := 0 to Tags.Count - 1 do
     Note.Tags.Add(Tags.Get(I));
   FPorts.Index.Upsert(Note);
-  Note.Free();
-
-  Tags.Free();
-  Links.Free();
 end;
 
 { Incremental single-note index: read + render this one note, then index it. }
@@ -159,7 +145,7 @@ end;
 
 procedure TChangeProcessor.BuildAll;
 var
-  Ids, Sources, Htmls: TStringList;
+  Ids, Sources, Htmls: TList<string>;
   I: Integer;
   Id: string;
   TStart, TEnd, ElapsedMs: Int64;
@@ -176,11 +162,11 @@ begin
     the render+index work. }
   TStart := _TimeNow();
 
-  Sources := TStringList.Create();
+  Sources := TList<string>.Create();
   for I := 0 to Ids.Count - 1 do
     Sources.Add(FPorts.Repo.ReadSource(Ids.Get(I)));
 
-  Htmls := TStringList.Create();
+  Htmls := TList<string>.Create();
   FPorts.Renderer.RenderMany(Sources, Htmls);
 
   for I := 0 to Ids.Count - 1 do
@@ -194,10 +180,6 @@ begin
 
   FPorts.Log.Info('Build complete: ' + IntToStr(Ids.Count) + ' notes in ' +
                   IntToStr(ElapsedMs) + ' ms');
-
-  Sources.Free();
-  Htmls.Free();
-  Ids.Free();
 end;
 
 procedure TChangeProcessor.OnUpsert(const AId: string);
@@ -236,27 +218,27 @@ begin
     Result := AId;
 end;
 
-function TChangeProcessor.BacklinkIds(const AId: string): TStringList;
+function TChangeProcessor.BacklinkIds(const AId: string): TList<string>;
 begin
   Result := FGraph.BacklinksOf(AId);
 end;
 
-function TChangeProcessor.OutLinkIds(const AId: string): TStringList;
+function TChangeProcessor.OutLinkIds(const AId: string): TList<string>;
 begin
   Result := FGraph.OutLinksOf(AId);
 end;
 
-function TChangeProcessor.TagsOfNote(const AId: string): TStringList;
+function TChangeProcessor.TagsOfNote(const AId: string): TList<string>;
 begin
   Result := FTags.TagsOf(AId);
 end;
 
-function TChangeProcessor.AllTags: TStringList;
+function TChangeProcessor.AllTags: TList<string>;
 begin
   Result := FTags.AllTags();
 end;
 
-function TChangeProcessor.NotesForTag(const ATag: string): TStringList;
+function TChangeProcessor.NotesForTag(const ATag: string): TList<string>;
 begin
   Result := FTags.NotesWithTag(ATag);
 end;
@@ -271,18 +253,18 @@ begin
   Result := FHtml.ContainsKey(AId);
 end;
 
-function TChangeProcessor.AllNoteIds: TStringList;
+function TChangeProcessor.AllNoteIds: TList<string>;
 var
   I: Integer;
 begin
-  Result := TStringList.Create();
+  Result := TList<string>.Create();
   for I := 0 to FHtml.Count - 1 do
     Result.Add(FHtml.Keys[I]);
 end;
 
-procedure TChangeProcessor.FindBrokenLinks(ASources, ATargets: TStringList);
+procedure TChangeProcessor.FindBrokenLinks(ASources, ATargets: TList<string>);
 var
-  Ids, OutL: TStringList;
+  Ids, OutL: TList<string>;
   I, J: Integer;
   Id, Target: string;
 begin
@@ -302,9 +284,7 @@ begin
         ATargets.Add(Target);
       end;
     end;
-    OutL.Free();
   end;
-  Ids.Free();
 end;
 
 end.

@@ -12,7 +12,7 @@ unit Luhmann.Ports;
 interface
 
 uses
-  Classes,
+  Generics.Collections,
   Luhmann.Model;
 
 type
@@ -20,7 +20,7 @@ type
     between source paths and canonical NoteIds. }
   INoteRepository = interface
     { Canonical relative ids of every .adoc note under the root. Caller owns. }
-    function ListNoteIds: TStringList;
+    function ListNoteIds: TList<string>;
     { Raw AsciiDoc source for a note id, or '' if missing. }
     function ReadSource(const AId: string): string;
     { Absolute filesystem path of a note's source. }
@@ -40,7 +40,7 @@ type
     { Render many sources at once. ASources[i] is rendered into AHtmls[i]
       (AHtmls is cleared and filled in the same order). Implementations may
       parallelise. Used for the initial full build. }
-    procedure RenderMany(ASources: TStringList; AHtmls: TStringList);
+    procedure RenderMany(ASources: TList<string>; AHtmls: TList<string>);
   end;
 
   { Full-text index over rendered notes. }

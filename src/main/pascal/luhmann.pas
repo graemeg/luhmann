@@ -165,7 +165,6 @@ begin
         CS := Watcher.Poll();
         if not CS.IsEmpty() then
           ApplyChanges(Proc, CS);
-        CS.Free();
       end;
     end;
   end;

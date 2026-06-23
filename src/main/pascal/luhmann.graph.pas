@@ -14,7 +14,6 @@ unit Luhmann.Graph;
 interface
 
 uses
-  Classes,
   Generics.Collections;
 
 type
@@ -30,12 +29,11 @@ type
     procedure ClearOutEdgesOf(const AFrom: string);
   public
     constructor Create;
-    destructor Destroy; override;
 
     { Replace the complete set of out-edges for AFrom with ATargets, updating
       the inverse (backlink) adjacency accordingly. Adding a note with no
       out-links still registers the node. }
-    procedure SetOutLinks(const AFrom: string; ATargets: TStringList);
+    procedure SetOutLinks(const AFrom: string; ATargets: TList<string>);
 
     { Remove a note entirely: drops its out-edges and their inverse entries.
       Inbound edges pointing at AFrom are left in place (they become dangling)
@@ -44,10 +42,10 @@ type
 
     { Backlinks: ids of notes that reference AId. Returns a fresh list owned by
       the caller (empty if none). }
-    function BacklinksOf(const AId: string): TStringList;
+    function BacklinksOf(const AId: string): TList<string>;
 
     { Forward links: ids AId references. Fresh caller-owned list. }
-    function OutLinksOf(const AId: string): TStringList;
+    function OutLinksOf(const AId: string): TList<string>;
 
     procedure Clear;
   end;
@@ -60,36 +58,11 @@ begin
   FIn  := TOrderedDictionary<string, TList<string>>.Create();
 end;
 
-destructor TLinkGraph.Destroy;
-begin
-  Clear();
-  FOut.Free();
-  FIn.Free();
-  inherited Destroy;
-end;
-
 procedure TLinkGraph.Clear;
-var
-  I: Integer;
-  Lst: TList<string>;
 begin
-  { TOrderedDictionary has no Clear; free the value lists then rebuild the
-    dictionaries empty. }
-  for I := 0 to FOut.Count - 1 do
-  begin
-    Lst := FOut.Values[I];
-    Lst.Free();
-  end;
-  FOut.Free();
+  { TOrderedDictionary has no Clear; rebuild the dictionaries empty. }
   FOut := TOrderedDictionary<string, TList<string>>.Create();
-
-  for I := 0 to FIn.Count - 1 do
-  begin
-    Lst := FIn.Values[I];
-    Lst.Free();
-  end;
-  FIn.Free();
-  FIn := TOrderedDictionary<string, TList<string>>.Create();
+  FIn  := TOrderedDictionary<string, TList<string>>.Create();
 end;
 
 procedure TLinkGraph.EnsureKey(ADict: TOrderedDictionary<string, TList<string>>;
@@ -130,7 +103,7 @@ begin
   Old.Clear();
 end;
 
-procedure TLinkGraph.SetOutLinks(const AFrom: string; ATargets: TStringList);
+procedure TLinkGraph.SetOutLinks(const AFrom: string; ATargets: TList<string>);
 var
   OutList, InList: TList<string>;
   I: Integer;
@@ -158,30 +131,27 @@ var
 begin
   ClearOutEdgesOf(AFrom);
   if FOut.TryGetValue(AFrom, OutList) then
-  begin
-    OutList.Free();
     FOut.Remove(AFrom);
-  end;
   { FIn[AFrom] is deliberately left: inbound edges become dangling. }
 end;
 
-function TLinkGraph.BacklinksOf(const AId: string): TStringList;
+function TLinkGraph.BacklinksOf(const AId: string): TList<string>;
 var
   Src: TList<string>;
   I: Integer;
 begin
-  Result := TStringList.Create();
+  Result := TList<string>.Create();
   if FIn.TryGetValue(AId, Src) then
     for I := 0 to Src.Count - 1 do
       Result.Add(Src[I]);
 end;
 
-function TLinkGraph.OutLinksOf(const AId: string): TStringList;
+function TLinkGraph.OutLinksOf(const AId: string): TList<string>;
 var
   Src: TList<string>;
   I: Integer;
 begin
-  Result := TStringList.Create();
+  Result := TList<string>.Create();
   if FOut.TryGetValue(AId, Src) then
     for I := 0 to Src.Count - 1 do
       Result.Add(Src[I]);
