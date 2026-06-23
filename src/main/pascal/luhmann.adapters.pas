@@ -15,7 +15,6 @@ unit Luhmann.Adapters;
 interface
 
 uses
-  Classes,
   Generics.Collections,
   Luhmann.Model,
   Luhmann.Ports;
@@ -81,7 +80,7 @@ function c_write(AFd: Integer; ABuf: Pointer; ACount: Int64): Int64;
 
 { ---- helpers ---- }
 
-function RunCapture(const AExe: string; AArgs: TStringList): string;
+function RunCapture(const AExe: string; AArgs: TList<string>): string;
 var
   P: TProcess;
   I: Integer;
@@ -127,7 +126,7 @@ end;
 
 function TFilesystemNoteRepository.ListNoteIds: TList<string>;
 var
-  Args: TStringList;
+  Args: TList<string>;
   Lines: TList<string>;
   Raw, Ln: string;
   I, Prefix: Integer;
@@ -136,7 +135,7 @@ begin
   { find <root> -path <root>/.luhmann -prune -o -type f -name '*.adoc' -print
     The prune skips the derived '.luhmann' directory (site, tmp, index) so the
     renderer's scratch files never masquerade as notes. }
-  Args := TStringList.Create();
+  Args := TList<string>.Create();
   Args.Add(FRoot);
   Args.Add('-path');
   Args.Add(FRoot + '/.luhmann');
@@ -192,7 +191,7 @@ begin
 end;
 
 { Build the asciidoctor argument list for ATempFile. }
-procedure BuildRenderArgs(AArgs: TStringList; const ATempFile: string);
+procedure BuildRenderArgs(AArgs: TList<string>; const ATempFile: string);
 begin
   AArgs.Add('-s');           { embedded: body only, no standalone header/footer }
   AArgs.Add('-a');
@@ -204,9 +203,9 @@ end;
 
 function TAsciidoctorRenderer.RenderFile(const ATempFile: string): string;
 var
-  Args: TStringList;
+  Args: TList<string>;
 begin
-  Args := TStringList.Create();
+  Args := TList<string>.Create();
   BuildRenderArgs(Args, ATempFile);
   Result := RunCapture(FExe, Args);
 end;
