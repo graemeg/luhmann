@@ -34,14 +34,7 @@ function LowerStr(const S: string): string;
 { 0-based index of ASub in S at or after AFrom, or -1 if not found. }
 function PosFrom(const ASub, S: string; AFrom: Integer): Integer;
 
-{ Split S into lines on LF, tolerating CRLF (CR stripped). Caller owns. }
-function SplitLines(const S: string): TList<string>;
-
-{ Split S on a single delimiter byte. Caller owns. }
-function SplitChar(const S: string; ADelim: Byte): TList<string>;
-
-{ Join a list with ASep between items. }
-function JoinList(AList: TList<string>; const ASep: string): string;
+{ SplitChar / SplitLines / JoinList now live in the stdlib StrUtils unit. }
 
 { Directory portion of a relative path: 'a/b/c.adoc' -> 'a/b'; 'x.adoc' -> ''. }
 function DirOf(const APath: string): string;
@@ -71,69 +64,6 @@ begin
   if AFrom < 0 then
     AFrom := 0;
   Result := PosEx(ASub, S, AFrom);
-end;
-
-function StripCR(const S: string): string;
-begin
-  if (Length(S) > 0) and (Byte(S[Length(S) - 1]) = CH_CR) then
-    Result := Copy(S, 0, Length(S) - 1)
-  else
-    Result := S;
-end;
-
-function SplitLines(const S: string): TList<string>;
-var
-  I, N, Start: Integer;
-begin
-  Result := TList<string>.Create();
-  N := Length(S);
-  Start := 0;
-  I := 0;
-  while I < N do
-  begin
-    if Byte(S[I]) = CH_LF then
-    begin
-      Result.Add(StripCR(Copy(S, Start, I - Start)));
-      Start := I + 1;
-    end;
-    I := I + 1;
-  end;
-  Result.Add(StripCR(Copy(S, Start, N - Start)));
-end;
-
-function SplitChar(const S: string; ADelim: Byte): TList<string>;
-var
-  I, N, Start: Integer;
-begin
-  Result := TList<string>.Create();
-  N := Length(S);
-  Start := 0;
-  I := 0;
-  while I < N do
-  begin
-    if Byte(S[I]) = ADelim then
-    begin
-      Result.Add(Copy(S, Start, I - Start));
-      Start := I + 1;
-    end;
-    I := I + 1;
-  end;
-  Result.Add(Copy(S, Start, N - Start));
-end;
-
-function JoinList(AList: TList<string>; const ASep: string): string;
-var
-  I: Integer;
-begin
-  Result := '';
-  if AList = nil then
-    Exit;
-  for I := 0 to AList.Count - 1 do
-  begin
-    if I > 0 then
-      Result := Result + ASep;
-    Result := Result + AList.Get(I);
-  end;
 end;
 
 function DirOf(const APath: string): string;
