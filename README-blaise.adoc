@@ -144,7 +144,7 @@ document].
 
 Prerequisites:
 
-* A Blaise compiler binary (tested with `v0.12.0-pre`).
+* A Blaise compiler binary (`v0.12.0` or newer).
 * PasBuild on the `PATH`.
 * The `asciidoctor` binary (`/usr/bin/asciidoctor`) for rendering, and `find`
   for note enumeration.
