@@ -88,7 +88,8 @@ function ChromeHeader: string;
 begin
   Result :=
     '<div class="luh-header">' +
-      '<div class="luh-brand"><a href="/">Luhmann</a></div>' +
+      '<div class="luh-brand"><a href="/">Luhmann</a>' +
+        '<span class="luh-version">v0.2.0</span></div>' +
       '<div class="luh-nav"><a href="/graph">Graph</a> <a href="/tags">Tags</a>' +
       ' <a href="/broken">Broken</a></div>' +
       '<div class="luh-spacer"></div>' +

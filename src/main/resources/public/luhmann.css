@@ -29,7 +29,9 @@ body {
   z-index: 10;
 }
 
+.luh-brand { position: relative; }
 .luh-brand a { font-weight: 700; font-size: 1.2rem; color: var(--luh-fg); text-decoration: none; }
+.luh-version { position: absolute; top: 1.3rem; left: 0; font-size: 0.7rem; color: #999; }
 .luh-nav a { margin-right: 0.8rem; color: var(--luh-accent); text-decoration: none; font-size: 0.95rem; }
 .luh-spacer { flex: 1; }
 
