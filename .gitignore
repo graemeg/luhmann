@@ -1,8 +1,4 @@
 .DS_Store
-.clj-kondo/
-.cpcache/
-.lsp/
-.nrepl-port
 example/.luhmann
 target/
 tools/
