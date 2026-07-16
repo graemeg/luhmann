@@ -41,6 +41,7 @@ implementation
 
 uses
   Generics.Collections,
+  SysUtils,
   StrUtils,
   Luhmann.Util;
 
@@ -66,32 +67,6 @@ end;
 function TConfig.TempDir: string;
 begin
   Result := LuhmannDir + '/tmp';
-end;
-
-function StrToIntDef(const S: string; ADefault: Integer): Integer;
-var
-  I, N: Integer;
-  B: Byte;
-  Acc: Integer;
-begin
-  N := Length(S);
-  if N = 0 then
-  begin
-    Result := ADefault;
-    Exit;
-  end;
-  Acc := 0;
-  for I := 0 to N - 1 do
-  begin
-    B := Byte(S[I]);
-    if (B < 48) or (B > 57) then
-    begin
-      Result := ADefault;
-      Exit;
-    end;
-    Acc := Acc * 10 + (B - 48);
-  end;
-  Result := Acc;
 end;
 
 function TConfig.ConfigPath: string;
