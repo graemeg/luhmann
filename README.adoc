@@ -144,7 +144,8 @@ document].
 
 Prerequisites:
 
-* A Blaise compiler binary (`v0.12.0` or newer).
+* A Blaise compiler binary (`v0.12.0` or newer; `v0.14.0` for FreeBSD
+  cross-compilation).
 * PasBuild on the `PATH`.
 * The `asciidoctor` binary (`/usr/bin/asciidoctor`) for rendering, and `find`
   for note enumeration.
@@ -156,6 +157,24 @@ pasbuild compile --compiler /path/to/blaise
 
 The executable is produced at `target/luhmann`, with static assets copied to
 `target/public`.
+
+=== Cross-compiling
+
+`scripts/blz.sh` takes an optional `--target`. The Blaise assembler and linker
+are internal, so cross builds need no foreign sysroot or toolchain:
+
+[source,shell]
+----
+scripts/blz.sh --target freebsd-x86_64 \
+  src/main/pascal/luhmann.pas target/luhmann-freebsd
+----
+
+FreeBSD builds require Blaise `v0.14.0` or newer, where dynamic linking against
+FreeBSD libc landed. Luhmann binds C libraries, so it cannot use the
+freestanding static path. The resulting binary links `libc.so.7` and
+`libthr.so.3` and needs `__libc_start1`, which is present on FreeBSD 14 and on
+13.x userlands shipping the `FBSD_1.7` symbol version (including TrueNAS Core
+13.x); a stock 13.1 install may not have it.
 
 == Running
 
