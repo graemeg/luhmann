@@ -16,6 +16,7 @@ begin
   ForceDirectories('/tmp/luh-watch');
   WriteFile('/tmp/luh-watch/a.adoc', '= A');
   WriteFile('/tmp/luh-watch/b.adoc', '= B');
+  DeleteFile('/tmp/luh-watch/c.adoc');   { left behind by a previous run }
   Ports := TPorts.Create();
   Ports.Repo := TFilesystemNoteRepository.Create('/tmp/luh-watch');
   W := TPollingWatcher.Create(Ports);
