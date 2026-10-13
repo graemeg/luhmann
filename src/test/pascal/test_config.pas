@@ -1,5 +1,5 @@
 program config_test;
-uses Luhmann.Config;
+uses Luhmann.Config, Net.Sockets;
 var Pass, Fail: Integer; c: TConfig;
 procedure Check(const AName: string; ACond: Boolean);
 begin
@@ -18,10 +18,43 @@ begin
   Check('default catchall', c.CatchAll = 'unfiled');
   Check('luhmann dir', c.LuhmannDir = '/tmp/luh-watch/.luhmann');
   Check('site dir', c.SiteDir() = '/tmp/luh-watch/.luhmann/site');
+  { Absent 'bind' must stay loopback: the default may never expose the server. }
+  Check('default bind', c.Bind = '127.0.0.1');
+  Check('default bind is loopback', c.BindIsLoopback());
   c.LoadOverrides();
   Check('port override', c.Port = 8080);
   Check('editor override', c.Editor = 'nvim-qt');
   Check('catchall override', c.CatchAll = 'inbox');
+  { A file with no 'bind' key must not silently change the bind address. }
+  Check('bind unchanged by unrelated keys', c.Bind = '127.0.0.1');
+
+  { --- bind = 0.0.0.0 (all interfaces) --- }
+  WriteFile('/tmp/luh-watch/.luhmann.ini', 'bind = 0.0.0.0'#10);
+  c := TConfig.Create('/tmp/luh-watch/');
+  c.LoadOverrides();
+  Check('bind any', c.Bind = '0.0.0.0');
+  Check('bind any not loopback', not c.BindIsLoopback());
+
+  { --- bind = a specific interface address --- }
+  WriteFile('/tmp/luh-watch/.luhmann.ini', 'bind = 192.168.1.50'#10);
+  c := TConfig.Create('/tmp/luh-watch/');
+  c.LoadOverrides();
+  Check('bind specific', c.Bind = '192.168.1.50');
+  Check('bind specific not loopback', not c.BindIsLoopback());
+  Check('bind specific resolves', c.BindAddr() = IPv4(192, 168, 1, 50));
+
+  { --- explicit loopback is still loopback --- }
+  WriteFile('/tmp/luh-watch/.luhmann.ini', 'bind = 127.0.0.1'#10);
+  c := TConfig.Create('/tmp/luh-watch/');
+  c.LoadOverrides();
+  Check('explicit loopback', c.BindIsLoopback());
+
+  { --- an unparseable address must fail closed, not fall through to 0.0.0.0 --- }
+  WriteFile('/tmp/luh-watch/.luhmann.ini', 'bind = not-an-ip'#10);
+  c := TConfig.Create('/tmp/luh-watch/');
+  c.LoadOverrides();
+  Check('bad bind rejected', not c.BindIsValid());
+  Check('bad bind stays loopback', c.BindIsLoopback());
 
   { --- asciidoctor: unset by default, resolved from PATH --- }
   ForceDirectories('/tmp/luh-path-a');

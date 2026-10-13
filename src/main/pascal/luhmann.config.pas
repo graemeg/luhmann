@@ -8,10 +8,19 @@
 
   Recognised keys (all optional):
     port             = 2022
+    bind             = 127.0.0.1
     luhmann-dir      = <root>/.luhmann
     editor           = <command, e.g. nvim-qt>
     catch-all-label  = unfiled
     asciidoctor      = <path; default: first on PATH, else /usr/bin/asciidoctor>
+
+  'bind' is a literal dotted-quad (no DNS): 127.0.0.1 keeps the server private
+  to the machine, 0.0.0.0 listens on every interface, and a specific interface
+  address (e.g. 192.168.1.50) is narrower than 0.0.0.0 where that is enough.
+  It defaults to loopback, so the server is never exposed by accident -- the
+  exposure has to be asked for.  An address that does not parse is REJECTED and
+  the default is kept, because the failure must not be "fall through to
+  0.0.0.0"; call BindIsValid after LoadOverrides to report it.
 }
 unit Luhmann.Config;
 
@@ -23,6 +32,7 @@ type
     RootDir:    string;
     LuhmannDir: string;
     Port:       Integer;
+    Bind:       string;    { dotted-quad listen address; 127.0.0.1 by default }
     Editor:     string;
     CatchAll:   string;
     Asciidoctor: string;
@@ -35,6 +45,18 @@ type
     function ConfigPath: string;
     function SiteDir: string;
     function TempDir: string;
+    { Bind as a network-order IPv4, ready for THttpServer.StartOn.  Falls back
+      to loopback if Bind does not parse (see BindIsValid). }
+    function BindAddr: UInt32;
+    { True when Bind is the loopback address.  Features that are safe only on a
+      private listener -- launching an editor process, say -- gate on this
+      rather than on the string, so '127.0.0.1' and a malformed value that fell
+      back to it are treated alike. }
+    function BindIsLoopback: Boolean;
+    { False when the configured Bind string could not be parsed as a dotted
+      quad.  The caller decides whether that is fatal; the value itself has
+      already fallen back to loopback. }
+    function BindIsValid: Boolean;
     { The asciidoctor executable to run: the configured path when set,
       otherwise the first 'asciidoctor' found on APathList (pass the PATH
       environment value), otherwise /usr/bin/asciidoctor. }
@@ -47,6 +69,7 @@ uses
   Generics.Collections,
   SysUtils,
   StrUtils,
+  Net.Sockets,
   Luhmann.Util;
 
 constructor TConfig.Create(const ARootDir: string);
@@ -57,6 +80,7 @@ begin
     RootDir := Copy(RootDir, 0, Length(RootDir) - 1);
   LuhmannDir := RootDir + '/.luhmann';
   Port := 2022;
+  Self.Bind := '127.0.0.1';
   Editor := '';
   CatchAll := 'unfiled';
   Asciidoctor := '';   { unset: ResolveAsciidoctor searches PATH }
@@ -87,6 +111,28 @@ begin
   Result := RootDir + '/.luhmann.ini';
 end;
 
+function TConfig.BindIsValid: Boolean;
+var
+  Addr: UInt32;
+begin
+  Result := ParseIPv4(Bind, Addr);
+end;
+
+function TConfig.BindAddr: UInt32;
+var
+  Addr: UInt32;
+begin
+  if ParseIPv4(Bind, Addr) then
+    Result := Addr
+  else
+    Result := INADDR_LOOPBACK;
+end;
+
+function TConfig.BindIsLoopback: Boolean;
+begin
+  Result := BindAddr() = INADDR_LOOPBACK;
+end;
+
 function TConfig.LoadOverrides: Boolean;
 var
   Path, Content, Line, Key, Val: string;
@@ -113,6 +159,11 @@ begin
     Val := TrimStr(Copy(Line, Eq + 1, Length(Line) - Eq - 1));
     if Key = 'port' then
       Port := StrToIntDef(Val, Port)
+    else if Key = 'bind' then
+      { Stored as given -- including an unparseable value, so BindIsValid can
+        report it and the caller can refuse to start.  BindAddr still resolves
+        to loopback meanwhile, so no malformed value can widen exposure. }
+      Self.Bind := Val
     else if Key = 'luhmann-dir' then
       LuhmannDir := Val
     else if Key = 'editor' then

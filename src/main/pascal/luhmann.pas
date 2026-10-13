@@ -112,6 +112,17 @@ begin
     WriteLn('  config:      none found at ', Config.ConfigPath(),
             ' (using defaults)');
   WriteLn('  port:        ', Config.Port);
+  { A bind value that does not parse is fatal rather than a fall back to
+    loopback: silently ignoring it would present as "the server is running but
+    unreachable", which is a far harder thing to debug than a refusal here. }
+  if not Config.BindIsValid() then
+  begin
+    WriteLn('  bind:        ', Config.Bind, '  <- not a valid IPv4 address');
+    WriteLn('Refusing to start. Use a literal dotted-quad, e.g. 0.0.0.0 ',
+            '(all interfaces) or 127.0.0.1 (this machine only).');
+    Halt(1);
+  end;
+  WriteLn('  bind:        ', Config.Bind);
   AsciidoctorExe := Config.ResolveAsciidoctor(GetEnvVar('PATH'));
   WriteLn('  asciidoctor: ', AsciidoctorExe);
   WriteLn('  render-jobs: ', Config.RenderJobs);
@@ -131,9 +142,9 @@ begin
 
   { --- HTTP server (created before the reload notifier needs it) --- }
   Server := THttpServer.Create(Config.Port);
-  if not Server.Start() then
+  if not Server.StartOn(Config.BindAddr()) then
   begin
-    WriteLn('Failed to bind port ', Config.Port);
+    WriteLn('Failed to bind ', Config.Bind, ':', Config.Port);
     Halt(1);
   end;
   Server.SetNonBlocking();
@@ -149,7 +160,16 @@ begin
   App := TLuhmannApp.Create(Proc, Config, Ports, PublicDir);
   Handler := App;
 
-  WriteLn('Luhmann ready at http://localhost:', Config.Port);
+  if Config.BindIsLoopback() then
+    WriteLn('Luhmann ready at http://localhost:', Config.Port)
+  else
+  begin
+    { Name the real address -- saying "localhost" here would be wrong, and the
+      exposure is worth stating plainly rather than leaving to be discovered. }
+    WriteLn('Luhmann ready on ', Config.Bind, ':', Config.Port,
+            ' (reachable from other machines; no authentication)');
+    WriteLn('  /api/edit is disabled while bound off-loopback');
+  end;
 
   { --- event loop: serve any pending request, else poll for changes --- }
   PollCounter := 0;

@@ -454,6 +454,19 @@ procedure TLuhmannApp.ApiEdit(ARequest: THttpRequest; AResponse: THttpResponse);
 var
   Note, AbsPath: string;
 begin
+  { Launching an editor spawns a process on the host.  That is fine while the
+    server is private to this machine, but on a reachable listener it is a
+    remote process-spawn primitive for anyone who can open the port, and there
+    is no authentication in front of it.  Refuse unless we are on loopback --
+    a host that binds an external address is typically headless anyway, with
+    no display for an editor to appear on. }
+  if not FConfig.BindIsLoopback() then
+  begin
+    AResponse.SetText(403, 'text/plain',
+      'editor disabled: server is bound to ' + FConfig.Bind +
+      ', not loopback');
+    Exit;
+  end;
   Note := ARequest.QueryParam('note');
   if (Note = '') or ContainsStr(Note, '..') then
   begin

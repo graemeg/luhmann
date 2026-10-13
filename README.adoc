@@ -239,10 +239,37 @@ render-jobs = 12
 editor      = gnome-terminal -- mcedit
 ----
 
-Available keys cover the port, the number of parallel render jobs, the editor
-command (GUI or terminal), the catch-all tag label, and the `asciidoctor` path.
-At startup Luhmann prints which config file it loaded so you can confirm it was
-picked up.
+Available keys cover the port, the bind address, the number of parallel render
+jobs, the editor command (GUI or terminal), the catch-all tag label, and the
+`asciidoctor` path.  At startup Luhmann prints which config file it loaded so
+you can confirm it was picked up.
+
+=== Serving to other machines
+
+By default Luhmann listens on `127.0.0.1`, so it is reachable only from the
+machine it runs on.  To serve a NAS or home-server install to the rest of your
+network, set `bind`:
+
+[source,ini]
+----
+bind = 0.0.0.0        # every interface
+bind = 192.168.1.50   # one interface only — narrower, prefer where it suffices
+----
+
+The value is a literal IPv4 address; host names are not resolved.  An address
+that does not parse is refused at startup rather than quietly falling back, so
+a typo cannot present as "running but unreachable".
+
+[IMPORTANT]
+====
+Luhmann has *no authentication*.  Binding a non-loopback address makes your
+notes readable by anything that can reach the port, so do this only on a
+network you trust, or put an authenticating reverse proxy in front.
+
+Because `/api/edit` launches an editor process on the host, it is *disabled
+automatically* whenever the bind address is not loopback — otherwise it would
+be a remote process-spawn primitive for anyone who could reach the port.
+====
 
 See link:docs/configuration.adoc[the configuration guide] for the full list of
 settings with defaults, and for editor-integration details (GUI vs terminal

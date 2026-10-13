@@ -45,8 +45,20 @@ SRC="$1"; OUT="$2"; shift 2
 
 rm -rf "$CACHE"; mkdir -p "$CACHE"
 
+# luhmann binds C libraries (sockets, process spawn), so it must link against
+# libc. The compiler decides static vs dynamic automatically from the set of
+# unresolved C symbols, and on FreeBSD that decision currently comes out
+# "static" -- which links without error but produces a libc-free binary whose
+# socket calls cannot work. On Linux the same --static build is correctly
+# refused. Ask for dynamic explicitly rather than relying on the auto decision.
+DYNAMIC=""
+case "$TARGET" in
+  freebsd-*) DYNAMIC="--dynamic" ;;
+esac
+
 exec "$BLAISE" --source "$SRC" --output "$OUT" \
   ${TARGET:+--target "$TARGET"} \
+  ${DYNAMIC:+$DYNAMIC} \
   --unit-path "$HERE/src/main/pascal" \
   --unit-path "$R/runtime/src/main/pascal" \
   --unit-path "$R/stdlib/src/main/pascal" \

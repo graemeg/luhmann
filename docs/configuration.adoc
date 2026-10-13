@@ -25,6 +25,7 @@ Luhmann starting
   root:        /home/me/Documents/second-brain
   config:      /home/me/Documents/second-brain/.luhmann.ini
   port:        2022
+  bind:        127.0.0.1
   render-jobs: 12
   public:      target/public
 ----
@@ -38,6 +39,7 @@ default.
 ----
 # ~/Documents/second-brain/.luhmann.ini
 port            = 2022
+bind            = 127.0.0.1
 render-jobs     = 12
 editor          = nvim-qt
 catch-all-label = unfiled
@@ -54,7 +56,18 @@ luhmann-dir     = /home/me/Documents/second-brain/.luhmann
 | `port`
 | integer
 | `2022`
-| TCP port the server listens on (localhost only, plain HTTP).
+| TCP port the server listens on (plain HTTP).
+
+| `bind`
+| string
+| `127.0.0.1`
+| IPv4 address to listen on.  `127.0.0.1` keeps the server private to this
+  machine; `0.0.0.0` listens on every interface; a specific address such as
+  `192.168.1.50` binds just that interface, which is narrower than `0.0.0.0`
+  where it is enough.  Host names are *not* resolved -- use a literal dotted
+  quad.  An unparseable value is refused at startup rather than falling back,
+  so a typo cannot present as "running but unreachable".  See
+  <<network-exposure>>.
 
 | `render-jobs`
 | integer
@@ -69,7 +82,9 @@ luhmann-dir     = /home/me/Documents/second-brain/.luhmann
 | _(unset)_
 | Command used by the `e` shortcut / `/api/edit` to open a note, e.g.
   `nvim-qt` or `code -g`.  The note's path is appended as the final argument.
-  If unset, the editor feature is disabled.  See <<editor-integration>>.
+  If unset, the editor feature is disabled.  Also disabled automatically
+  whenever `bind` is not loopback -- see <<network-exposure>>.  See
+  <<editor-integration>>.
 
 | `catch-all-label`
 | string
@@ -96,6 +111,50 @@ The static-asset directory (CSS/JS/graph page) is resolved separately, in this
 order: the `LUHMANN_PUBLIC` environment variable, else `public` beside the
 binary (the PasBuild layout, `target/public`), else `src/main/resources/public`
 for in-repo development runs.
+
+[[network-exposure]]
+== Network exposure
+
+Luhmann listens on `127.0.0.1` by default, reachable only from the machine it
+runs on.  Serving it elsewhere -- a NAS, a home server -- means setting `bind`
+to an address other than loopback:
+
+[source,ini]
+----
+bind = 0.0.0.0        # every interface
+bind = 192.168.1.50   # one interface only
+----
+
+Prefer a specific interface address over `0.0.0.0` where one suffices: it does
+not expose the server on interfaces the host may acquire later.
+
+=== What changes when you do this
+
+Luhmann has *no authentication and no TLS*.  Any machine that can reach the
+port can read every note.  Serve a non-loopback address only on a network you
+trust, or place an authenticating reverse proxy in front of it and leave
+Luhmann itself on loopback.
+
+The startup banner states the exposure rather than leaving it to be
+discovered:
+
+[source]
+----
+Luhmann ready on 0.0.0.0:2022 (reachable from other machines; no authentication)
+  /api/edit is disabled while bound off-loopback
+----
+
+=== Why /api/edit switches off
+
+`GET /api/edit?note=<id>` launches the configured `editor` as a process on the
+host.  That is a reasonable convenience on a private listener, and a remote
+process-spawn primitive on a reachable one -- with nothing authenticating the
+caller.  Luhmann therefore refuses the endpoint with `403` whenever `bind` is
+not loopback, regardless of whether `editor` is set.
+
+In practice this costs nothing: a host that binds an external address is
+usually headless, with no display for an editor to open onto.  Edit notes on
+the machine you are sitting at, over a loopback instance or a file share.
 
 [[editor-integration]]
 == Editor integration
