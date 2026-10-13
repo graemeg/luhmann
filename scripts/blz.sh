@@ -5,15 +5,18 @@
 #
 # Usage: scripts/blz.sh [--target <os>-<cpu>] <source.pas> <output-binary> [extra blaise flags...]
 #
-# --target cross-compiles; the default is the host (linux-x86_64). The Blaise
+# --target cross-compiles; the default is the host (linux-x86_64 or
+# macos-arm64). The Blaise
 # assembler and linker are internal, so a cross build needs no foreign sysroot
 # or toolchain. freebsd-x86_64 requires the compiler to be >= v0.14.0, which
 # is where dynamic linking against FreeBSD libc landed -- luhmann binds C
 # libraries, so it cannot use the freestanding static path.
 #
 # Environment:
-#   BLAISE_REPO     compiler checkout (default /data/devel/new-pascal-compiler)
-#   BLAISE_VERSION  release under $BLAISE_REPO/releases (default v0.14.0)
+#   BLAISE_REPO     compiler checkout (default /data/devel/new-pascal-compiler
+#                   on Linux, ~/devel/blaise on macOS)
+#   BLAISE_VERSION  release under $BLAISE_REPO/releases (default v0.14.0 on
+#                   Linux, v0.15.0-pre on macOS -- the first arm64 release)
 #   BLAISE          full path to a compiler binary; overrides the two above
 #   BLZ_CACHE       unit cache directory (default /tmp/luhmann-blzcache-<target>)
 set -euo pipefail
@@ -24,8 +27,12 @@ case "${1:-}" in
   --target=*) TARGET="${1#--target=}"; shift ;;
 esac
 
-R="${BLAISE_REPO:-/data/devel/new-pascal-compiler}"
-BLAISE="${BLAISE:-$R/releases/${BLAISE_VERSION:-v0.14.0}/blaise}"
+case "$(uname -s)" in
+  Darwin) DEF_REPO="$HOME/devel/blaise";            DEF_VERSION="v0.15.0-pre" ;;
+  *)      DEF_REPO="/data/devel/new-pascal-compiler"; DEF_VERSION="v0.14.0" ;;
+esac
+R="${BLAISE_REPO:-$DEF_REPO}"
+BLAISE="${BLAISE:-$R/releases/${BLAISE_VERSION:-$DEF_VERSION}/blaise}"
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 CACHE="${BLZ_CACHE:-/tmp/luhmann-blzcache-${TARGET:-host}}"
 
@@ -56,10 +63,20 @@ case "$TARGET" in
   freebsd-*) DYNAMIC="--dynamic" ;;
 esac
 
+# Older checkouts keep the RTL in runtime/ and find it via the unit path;
+# newer ones (e.g. the macOS checkout) have it in compiler/src/main/pascal,
+# which must be named with --rtl-src since the release binary does not sit
+# beside its source tree.
+if [ -d "$R/runtime/src/main/pascal" ]; then
+  RTL_ARGS=(--unit-path "$R/runtime/src/main/pascal")
+else
+  RTL_ARGS=(--rtl-src "$R/compiler/src/main/pascal")
+fi
+
 exec "$BLAISE" --source "$SRC" --output "$OUT" \
   ${TARGET:+--target "$TARGET"} \
   ${DYNAMIC:+$DYNAMIC} \
   --unit-path "$HERE/src/main/pascal" \
-  --unit-path "$R/runtime/src/main/pascal" \
+  "${RTL_ARGS[@]}" \
   --unit-path "$R/stdlib/src/main/pascal" \
   --unit-cache "$CACHE" "$@"
