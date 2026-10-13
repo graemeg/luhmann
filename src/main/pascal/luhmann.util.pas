@@ -23,6 +23,7 @@ const
   CH_SPACE  = 32;
   CH_COMMA  = 44;
   CH_SLASH  = 47;
+  CH_COLON  = 58;
   CH_LBRACK = 91;   { [ }
 
 { Trim leading/trailing ASCII whitespace. }
@@ -43,6 +44,11 @@ function DirOf(const APath: string): string;
   which is text-oriented and stops at the first null). Suitable for binary
   assets such as images. Returns '' if the file cannot be opened. }
 function ReadBinaryFile(const APath: string): string;
+
+{ Full path of the first file named AName in the colon-separated directory
+  list APathList (a PATH value), or '' if none matches.  Empty entries are
+  skipped rather than treated as the current directory. }
+function FindOnPath(const AName, APathList: string): string;
 
 implementation
 
@@ -98,6 +104,29 @@ begin
   until N <= 0;
   Result := SB.ToString();
   Stream.Close();
+end;
+
+function FindOnPath(const AName, APathList: string): string;
+var
+  Dirs: TList<string>;
+  I: Integer;
+  Dir: string;
+begin
+  Result := '';
+  Dirs := SplitChar(APathList, CH_COLON);
+  for I := 0 to Dirs.Count - 1 do
+  begin
+    Dir := Dirs.Get(I);
+    if Dir = '' then
+      Continue;
+    if EndsStr('/', Dir) then
+      Dir := Copy(Dir, 0, Length(Dir) - 1);
+    if FileExists(Dir + '/' + AName) then
+    begin
+      Result := Dir + '/' + AName;
+      Exit;
+    end;
+  end;
 end;
 
 end.

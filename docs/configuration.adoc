@@ -79,8 +79,11 @@ luhmann-dir     = /home/me/Documents/second-brain/.luhmann
 
 | `asciidoctor`
 | string
-| `/usr/bin/asciidoctor`
-| Path to the `asciidoctor` binary used for rendering.
+| first `asciidoctor` on `PATH`, else `/usr/bin/asciidoctor`
+| Path to the `asciidoctor` binary used for rendering.  When unset, the
+  `PATH` is searched, so a Homebrew install (`/opt/homebrew/bin`) or a gem
+  install is found without configuration.  The resolved path is printed at
+  startup.
 
 | `luhmann-dir`
 | string

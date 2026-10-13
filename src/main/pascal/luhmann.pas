@@ -60,7 +60,7 @@ begin
 end;
 
 var
-  RootDir, PublicDir: string;
+  RootDir, PublicDir, AsciidoctorExe: string;
   Config: TConfig;
   Ports: TPorts;
   Proc: TChangeProcessor;
@@ -112,13 +112,15 @@ begin
     WriteLn('  config:      none found at ', Config.ConfigPath(),
             ' (using defaults)');
   WriteLn('  port:        ', Config.Port);
+  AsciidoctorExe := Config.ResolveAsciidoctor(GetEnvVar('PATH'));
+  WriteLn('  asciidoctor: ', AsciidoctorExe);
   WriteLn('  render-jobs: ', Config.RenderJobs);
   WriteLn('  public:      ', PublicDir);
 
   { --- compose adapters into the port registry --- }
   Ports := TPorts.Create();
   Ports.Repo     := TFilesystemNoteRepository.Create(Config.RootDir);
-  Ports.Renderer := TAsciidoctorRenderer.Create(Config.Asciidoctor,
+  Ports.Renderer := TAsciidoctorRenderer.Create(AsciidoctorExe,
                       Config.TempDir(), Config.RenderJobs);
   Ports.Index    := TInMemorySearchIndex.Create();
   Ports.Editor   := TProcessEditorLauncher.Create(Config.Editor);

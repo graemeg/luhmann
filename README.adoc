@@ -147,8 +147,8 @@ Prerequisites:
 * A Blaise compiler binary (`v0.12.0` or newer; `v0.14.0` for FreeBSD
   cross-compilation).
 * PasBuild on the `PATH`.
-* The `asciidoctor` binary (`/usr/bin/asciidoctor`) for rendering, and `find`
-  for note enumeration.
+* The `asciidoctor` binary for rendering (found on the `PATH`, or set with the
+  `asciidoctor` config key), and `find` for note enumeration.
 
 [source,shell]
 ----

@@ -11,7 +11,7 @@
     luhmann-dir      = <root>/.luhmann
     editor           = <command, e.g. nvim-qt>
     catch-all-label  = unfiled
-    asciidoctor      = /usr/bin/asciidoctor
+    asciidoctor      = <path; default: first on PATH, else /usr/bin/asciidoctor>
 }
 unit Luhmann.Config;
 
@@ -35,6 +35,10 @@ type
     function ConfigPath: string;
     function SiteDir: string;
     function TempDir: string;
+    { The asciidoctor executable to run: the configured path when set,
+      otherwise the first 'asciidoctor' found on APathList (pass the PATH
+      environment value), otherwise /usr/bin/asciidoctor. }
+    function ResolveAsciidoctor(const APathList: string): string;
   end;
 
 implementation
@@ -55,8 +59,17 @@ begin
   Port := 2022;
   Editor := '';
   CatchAll := 'unfiled';
-  Asciidoctor := '/usr/bin/asciidoctor';
+  Asciidoctor := '';   { unset: ResolveAsciidoctor searches PATH }
   RenderJobs := 8;
+end;
+
+function TConfig.ResolveAsciidoctor(const APathList: string): string;
+begin
+  Result := Asciidoctor;
+  if Result = '' then
+    Result := FindOnPath('asciidoctor', APathList);
+  if Result = '' then
+    Result := '/usr/bin/asciidoctor';
 end;
 
 function TConfig.SiteDir: string;
