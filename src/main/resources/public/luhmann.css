@@ -100,3 +100,41 @@ body {
 }
 .luh-broken th { color: var(--luh-muted); font-weight: 600; font-size: 0.9rem; }
 .luh-broken code { background: var(--luh-chip); padding: 0.1rem 0.3rem; border-radius: 4px; }
+
+/* AsciiDoc admonitions (NOTE, TIP, IMPORTANT, WARNING, CAUTION).  asciidoctor
+   emits a one-row table: a label cell (td.icon) and a content cell.  Render it
+   as a callout: coloured left bar, light tint, small uppercase label.  Each
+   type sets --luh-adm / --luh-adm-bg; label colours meet WCAG AA on the tint. */
+.admonitionblock { margin: 1.25rem 0; }
+.admonitionblock > table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--luh-adm-bg);
+  border-left: 4px solid var(--luh-adm);
+  border-radius: 0 6px 6px 0;
+}
+.admonitionblock td { vertical-align: top; padding: 0.7rem 0.9rem; }
+.admonitionblock td.icon { width: 1%; white-space: nowrap; padding-right: 0.2rem; }
+.admonitionblock td.icon .title {
+  font-family: sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--luh-adm);
+  line-height: 1.6rem;
+}
+.admonitionblock td.content > .title { font-weight: 600; margin-bottom: 0.3rem; }
+.admonitionblock td.content p { margin: 0.4rem 0; }
+.admonitionblock td.content > :first-child,
+.admonitionblock td.content > :first-child > p:first-child { margin-top: 0; }
+.admonitionblock td.content > :last-child,
+.admonitionblock td.content > :last-child > :last-child { margin-bottom: 0; }
+.admonitionblock code { background: rgba(255, 255, 255, 0.7); padding: 0.05rem 0.3rem; border-radius: 4px; }
+
+.admonitionblock.note      { --luh-adm: #3b6ea5; --luh-adm-bg: #f0f4f9; }
+.admonitionblock.tip       { --luh-adm: #2a7046; --luh-adm-bg: #eef6f1; }
+.admonitionblock.important { --luh-adm: #7a4ea3; --luh-adm-bg: #f4f0f9; }
+.admonitionblock.warning   { --luh-adm: #9a5200; --luh-adm-bg: #fbf3e9; }
+.admonitionblock.caution   { --luh-adm: #b02a20; --luh-adm-bg: #fbefee; }
