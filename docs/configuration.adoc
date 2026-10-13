@@ -213,3 +213,69 @@ supported.  Prefer the `gnome-terminal -- <editor>` form over the deprecated
 
 If `editor` is unset, the `e` shortcut is disabled and `/api/edit` returns
 `400`.
+
+=== macOS
+
+==== VS Code
+
+VS Code ships a command-line launcher inside the application bundle.  Expose it
+on the `PATH` under a name without spaces, either with the VS Code command
+*Shell Command: Install 'code' command in PATH* (which creates
+`/usr/local/bin/code`) or with a symlink:
+
+[source,shell]
+----
+ln -sf "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code" \
+  ~/.local/bin/code
+----
+
+Then:
+
+[source,ini]
+----
+editor = code
+----
+
+The symlink must target `Contents/Resources/app/bin/code`, the launcher script.
+`Contents/MacOS/Code` is the application binary itself; invoking it directly
+starts a separate application instance rather than opening the file in the
+running one.  The full bundle path cannot be used as the `editor` value because
+it contains spaces (see the note above).
+
+==== Terminal editors
+
+There is no macOS equivalent of `gnome-terminal -- vim`: Terminal.app does not
+accept a command to run on its command line.  A small wrapper script asks
+Terminal.app to open a new window running the editor.  Save it as, for example,
+`~/.local/bin/luhmann-vim` and make it executable:
+
+[source,shell]
+----
+#!/bin/sh
+# Open the note in vim inside a new Terminal.app window.
+exec osascript - "$1" <<'EOF'
+on run argv
+  tell application "Terminal"
+    do script "vim " & quoted form of (item 1 of argv)
+    activate
+  end tell
+end run
+EOF
+----
+
+[source,ini]
+----
+editor = luhmann-vim
+----
+
+`quoted form of` passes note paths containing spaces or quotes through intact.
+Substitute `nvim`, `mcedit` or another console editor for `vim` as required.
+macOS may ask, on first use, for permission to control Terminal.app.
+
+==== Executable lookup
+
+A bare command name such as `code` or `luhmann-vim` is resolved on the `PATH`
+that Luhmann inherited when it was started.  A server started from an
+interactive shell sees that shell's `PATH`; one started by launchd does not
+include `~/.local/bin`.  In the latter case give the absolute path, for example
+`editor = /Users/me/.local/bin/code`.
