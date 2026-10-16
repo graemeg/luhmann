@@ -13,10 +13,7 @@
   </build>
 
   <test>
-    <framework>auto</framework>
+    <framework>blaise</framework>
     <testSource>TestRunner.pas</testSource>
-    <frameworkOptions>
-      <option>--all</option>
-    </frameworkOptions>
   </test>
 </project>

@@ -158,6 +158,16 @@ pasbuild compile --compiler /path/to/blaise
 The executable is produced at `target/luhmann`, with static assets copied to
 `target/public`.
 
+Blaise must be able to find its RTL and stdlib sources.  A release binary that
+does not sit beside its source tree needs a `blaise.cfg` next to the binary, or
+a `~/.blaise.cfg`, for example:
+
+[source,ini]
+----
+rtl-src=/path/to/blaise/compiler/src/main/pascal
+unit-path=/path/to/blaise/stdlib/src/main/pascal
+----
+
 === Cross-compiling
 
 `scripts/blz.sh` takes an optional `--target`. The Blaise assembler and linker
@@ -356,9 +366,24 @@ phase).  The build prints its own timing on the `Build complete` line.
 
 [source,shell]
 ----
-scripts/test.sh
+pasbuild test --compiler /path/to/blaise
 ----
 
-This compiles and runs every unit-test program under `src/test/pascal`.  The
-network/corpus integration tests (`test_adapters`, `test_http`) are excluded
-from the scripted run and are exercised manually.
+The tests use the `blaise.testing` xUnit framework.  Each `*.tests.pas` unit
+under `src/test/pascal` declares `TTestCase` suites and registers them in its
+`initialization` section; `test.registry.pas` pulls every unit in and
+`TestRunner.pas` runs them.  A new test unit must be added to
+`test.registry.pas`.
+
+The runner can also be invoked directly to select tests:
+
+[source,shell]
+----
+target/TestRunner --verbose
+target/TestRunner --suite TConfigTests
+target/TestRunner --suite TSearchIndexTests.TestPrefix
+----
+
+The asciidoctor renderer test is reported as ignored when `asciidoctor` is not
+on the `PATH`.  `src/test/manual/http_smoke.pas` is an interactive HTTP server
+smoke test; it serves three requests on port 19097 and is run by hand.
