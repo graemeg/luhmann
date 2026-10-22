@@ -150,6 +150,25 @@ Prerequisites:
 * The `asciidoctor` binary for rendering (found on the `PATH`, or set with the
   `asciidoctor` config key), and `find` for note enumeration.
 
+asciidoctor is not installed by default on most systems.  Install it with your
+package manager:
+
+[source,shell]
+----
+sudo apt install asciidoctor                 # Debian, Ubuntu
+sudo dnf install rubygem-asciidoctor         # Fedora, Mageia
+sudo pacman -S asciidoctor                   # Arch
+sudo pkg install rubygem-asciidoctor         # FreeBSD
+brew install asciidoctor                     # macOS (Homebrew)
+gem install asciidoctor                      # anywhere with Ruby
+----
+
+Luhmann checks for asciidoctor at startup and refuses to start, with the
+reason, when it is missing or cannot be run.  When it is found, the startup
+banner shows its path and version.
+
+Then build Luhmann:
+
 [source,shell]
 ----
 pasbuild compile --compiler /path/to/blaise
