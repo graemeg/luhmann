@@ -3,7 +3,8 @@
 
   Tests for the filesystem note repository and the asciidoctor renderer
   adapters.  The repository runs against a freshly-built notes directory; the
-  renderer test is skipped when asciidoctor is not installed. }
+  real-render test is skipped when asciidoctor is not installed, while the
+  failure paths use small shell scripts standing in for asciidoctor. }
 
 unit Luhmann.Adapters.Tests;
 
@@ -26,17 +27,59 @@ type
   end;
 
   TAsciidoctorRendererTests = class(TTestCase)
+  protected
+    procedure SetUp; override;
   published
     procedure TestRender;
+    procedure TestRenderMissingExeIsReported;
+    procedure TestRenderFailureShowsEscapedOutput;
+    procedure TestRenderManyFailureIsReported;
+  end;
+
+  { The startup probe that refuses to run with an unusable asciidoctor. }
+  TCheckAsciidoctorTests = class(TTestCase)
+  protected
+    procedure SetUp; override;
+  published
+    procedure TestMissingExe;
+    procedure TestFailingExe;
+    procedure TestWorkingExeReportsVersion;
   end;
 
 implementation
 
 uses
-  Generics.Collections, Luhmann.Ports, Luhmann.Adapters, Luhmann.Config;
+  Generics.Collections, Process, Luhmann.Ports, Luhmann.Adapters, Luhmann.Config;
 
 const
   DIR = '/tmp/luh-test-repo';
+  BIN = '/tmp/luh-test-bin';
+  MISSING_EXE = '/tmp/luh-test-bin/no-such-asciidoctor';
+  FAILING_EXE = '/tmp/luh-test-bin/failing-asciidoctor';
+  FAKE_EXE    = '/tmp/luh-test-bin/fake-asciidoctor';
+
+{ Write an executable shell script to APath. }
+procedure WriteScript(const APath, ABody: string);
+var
+  P: TProcess;
+begin
+  WriteFile(APath, '#!/bin/sh'#10 + ABody + #10);
+  P := TProcess.Create(nil);
+  P.Executable := '/bin/chmod';
+  P.Parameters.Add('755');
+  P.Parameters.Add(APath);
+  P.Execute();
+  P.WaitOnExit();
+end;
+
+{ Stand-in asciidoctor executables: one that fails with markup in its output,
+  one that answers --version like the real thing. }
+procedure MakeFakeExes;
+begin
+  ForceDirectories(BIN);
+  WriteScript(FAILING_EXE, 'echo "<oops> & bang"; exit 3');
+  WriteScript(FAKE_EXE, 'echo "Asciidoctor 9.9.9 [https://asciidoctor.org]"');
+end;
 
 { ---- TFilesystemNoteRepositoryTests ---- }
 
@@ -98,6 +141,12 @@ end;
 
 { ---- TAsciidoctorRendererTests ---- }
 
+procedure TAsciidoctorRendererTests.SetUp;
+begin
+  ForceDirectories(DIR + '/.luhmann/tmp');
+  MakeFakeExes();
+end;
+
 procedure TAsciidoctorRendererTests.TestRender;
 var
   Exe, html: string;
@@ -112,8 +161,80 @@ begin
   AssertContains('inline markup rendered', '<strong>edible</strong>', html);
 end;
 
+{ An asciidoctor that cannot be started must not yield an empty note: the
+  body says rendering failed and names the executable. }
+procedure TAsciidoctorRendererTests.TestRenderMissingExeIsReported;
+var
+  html: string;
+begin
+  html := TAsciidoctorRenderer.Create(MISSING_EXE, DIR + '/.luhmann/tmp', 1)
+            .Render('= Apple'#10);
+  AssertContains('error block', 'luh-render-error', html);
+  AssertContains('names the executable', MISSING_EXE, html);
+  AssertContains('exit status', '127', html);
+end;
+
+procedure TAsciidoctorRendererTests.TestRenderFailureShowsEscapedOutput;
+var
+  html: string;
+begin
+  html := TAsciidoctorRenderer.Create(FAILING_EXE, DIR + '/.luhmann/tmp', 1)
+            .Render('= Apple'#10);
+  AssertContains('error block', 'luh-render-error', html);
+  AssertContains('exit status', '3', html);
+  AssertContains('escaped output', '&lt;oops&gt; &amp; bang', html);
+end;
+
+procedure TAsciidoctorRendererTests.TestRenderManyFailureIsReported;
+var
+  Sources, Htmls: TList<string>;
+begin
+  Sources := TList<string>.Create();
+  Sources.Add('= Apple'#10);
+  Sources.Add('= Pear'#10);
+  Htmls := TList<string>.Create();
+  TAsciidoctorRenderer.Create(MISSING_EXE, DIR + '/.luhmann/tmp', 2)
+    .RenderMany(Sources, Htmls);
+  AssertEquals('one result per source', 2, Htmls.Count);
+  AssertContains('first reported', 'luh-render-error', Htmls.Get(0));
+  AssertContains('second reported', 'luh-render-error', Htmls.Get(1));
+end;
+
+{ ---- TCheckAsciidoctorTests ---- }
+
+procedure TCheckAsciidoctorTests.SetUp;
+begin
+  MakeFakeExes();
+end;
+
+procedure TCheckAsciidoctorTests.TestMissingExe;
+var
+  Info: string;
+begin
+  AssertFalse('missing exe refused', CheckAsciidoctor(MISSING_EXE, Info));
+  AssertContains('reason', 'not found', Info);
+end;
+
+procedure TCheckAsciidoctorTests.TestFailingExe;
+var
+  Info: string;
+begin
+  AssertFalse('failing exe refused', CheckAsciidoctor(FAILING_EXE, Info));
+  AssertContains('exit status', '3', Info);
+  AssertContains('output', '<oops> & bang', Info);
+end;
+
+procedure TCheckAsciidoctorTests.TestWorkingExeReportsVersion;
+var
+  Info: string;
+begin
+  AssertTrue('working exe accepted', CheckAsciidoctor(FAKE_EXE, Info));
+  AssertEquals('version line', 'Asciidoctor 9.9.9 [https://asciidoctor.org]', Info);
+end;
+
 initialization
   RegisterTest(TFilesystemNoteRepositoryTests);
   RegisterTest(TAsciidoctorRendererTests);
+  RegisterTest(TCheckAsciidoctorTests);
 
 end.

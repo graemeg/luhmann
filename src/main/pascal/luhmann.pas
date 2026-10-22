@@ -60,7 +60,7 @@ begin
 end;
 
 var
-  RootDir, PublicDir, AsciidoctorExe: string;
+  RootDir, PublicDir, AsciidoctorExe, AsciidoctorInfo: string;
   Config: TConfig;
   Ports: TPorts;
   Proc: TChangeProcessor;
@@ -124,7 +124,15 @@ begin
   end;
   WriteLn('  bind:        ', Config.Bind);
   AsciidoctorExe := Config.ResolveAsciidoctor(GetEnvVar('PATH'));
-  WriteLn('  asciidoctor: ', AsciidoctorExe);
+  { Probe asciidoctor up front: a missing or broken one otherwise shows up only
+    as notes with tags and backlinks but no body, with nothing in the log. }
+  if not CheckAsciidoctor(AsciidoctorExe, AsciidoctorInfo) then
+  begin
+    WriteLn('  asciidoctor: ', AsciidoctorExe, '  <- unusable');
+    WriteLn('Refusing to start. ', AsciidoctorInfo);
+    Halt(1);
+  end;
+  WriteLn('  asciidoctor: ', AsciidoctorExe, ' (', AsciidoctorInfo, ')');
   WriteLn('  render-jobs: ', Config.RenderJobs);
   WriteLn('  public:      ', PublicDir);
 

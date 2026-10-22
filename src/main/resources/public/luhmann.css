@@ -63,6 +63,8 @@ body {
 .luh-backlinks { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--luh-border); }
 .luh-backlinks h3 { font-size: 1rem; color: var(--luh-muted); }
 .luh-none { color: var(--luh-muted); font-style: italic; }
+.luh-render-error { border-left: 4px solid #c0392b; padding: 0.5rem 1rem; margin: 1rem 0; }
+.luh-render-error pre { white-space: pre-wrap; font-size: 0.85rem; }
 
 .luh-result { margin-bottom: 1.4rem; }
 .luh-result-title { font-size: 1.1rem; font-weight: 600; }

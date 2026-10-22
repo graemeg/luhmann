@@ -16,6 +16,7 @@ interface
 
 uses
   Generics.Collections,
+  Process,
   Luhmann.Model,
   Luhmann.Ports;
 
@@ -36,13 +37,16 @@ type
 
   { Renders AsciiDoc by shelling out to `asciidoctor -s` (embedded body HTML).
     RenderMany launches up to FConcurrency asciidoctor processes at once for a
-    much faster initial build. }
+    much faster initial build. A render that exits non-zero (including an
+    executable that cannot be started at all) yields a visible
+    'luh-render-error' block in place of the note body, never an empty one. }
   TAsciidoctorRenderer = class(IAsciiDocRenderer)
   private
     FExe:         string;
     FTempDir:     string;
     FConcurrency: Integer;
     function RenderFile(const ATempFile: string): string;
+    function Finish(P: TProcess): string;
   public
     constructor Create(const AExe, ATempDir: string; AConcurrency: Integer);
     function Render(const ASource: string): string;
@@ -58,6 +62,12 @@ type
     function LaunchEditor(const AAbsPath: string): Boolean;
   end;
 
+  { Probe AExe with `--version` before serving. On success returns True with
+    AInfo set to the version line; otherwise False with AInfo explaining why
+    (not found, or the exit status and output of the failed run). }
+function CheckAsciidoctor(const AExe: string; var AInfo: string): Boolean;
+
+type
   { Levelled logger writing timestamped lines to stderr (fd 2). Minimal by
     design; a file sink can be added later behind the same ILogger port. }
   TConsoleLogger = class(ILogger)
@@ -70,8 +80,8 @@ implementation
 
 uses
   StrUtils,
-  Process,
-  Luhmann.Util;
+  Luhmann.Util,
+  Luhmann.Chrome;
 
 { The logger writes diagnostic lines to stderr (fd 2). That is process I/O, not
   networking, so it uses a local write(2) binding rather than Net.Sockets. }
@@ -80,23 +90,15 @@ function c_write(AFd: Integer; ABuf: Pointer; ACount: Int64): Int64;
 
 { ---- helpers ---- }
 
-function RunCapture(const AExe: string; AArgs: TList<string>): string;
+{ Drain a started child process to EOF, then reap it. ReadOutput returns at
+  most one pipe-buffer chunk and '' at EOF, so a single read truncates large
+  output and reading only AFTER WaitOnExit deadlocks when the child fills the
+  pipe (~64 KB) before exiting. Read until EOF first, then reap. }
+function DrainProcess(P: TProcess): string;
 var
-  P: TProcess;
-  I: Integer;
   Chunk: string;
   SB: TStringBuilder;
 begin
-  P := TProcess.Create(nil);
-  P.Executable := AExe;
-  for I := 0 to AArgs.Count - 1 do
-    P.Parameters.Add(AArgs.Get(I));
-  P.Execute();
-
-  { Drain the child's stdout pipe in a loop. ReadOutput returns at most one
-    pipe-buffer chunk and '' at EOF, so a single read truncates large output
-    and reading only AFTER WaitOnExit deadlocks when the child fills the pipe
-    (~64 KB) before exiting. Read until EOF first, then reap. }
   SB := TStringBuilder.Create();
   while True do
   begin
@@ -107,6 +109,67 @@ begin
   end;
   P.WaitOnExit();
   Result := SB.ToString();
+end;
+
+{ Launch AExe with AArgs; return the started process (caller drains it). }
+function Launch(const AExe: string; AArgs: TList<string>): TProcess;
+var
+  I: Integer;
+begin
+  Result := TProcess.Create(nil);
+  Result.Executable := AExe;
+  for I := 0 to AArgs.Count - 1 do
+    Result.Parameters.Add(AArgs.Get(I));
+  Result.Execute();
+end;
+
+function RunCapture(const AExe: string; AArgs: TList<string>): string;
+begin
+  Result := DrainProcess(Launch(AExe, AArgs));
+end;
+
+{ Exit status 127 is what the child reports when exec itself failed. }
+function FailureHint(AExitCode: Integer): string;
+begin
+  if AExitCode = 127 then
+    Result := ' It could not be started: check that asciidoctor is installed, ' +
+              'or set "asciidoctor = <path>" in .luhmann.ini.'
+  else
+    Result := '';
+end;
+
+function CheckAsciidoctor(const AExe: string; var AInfo: string): Boolean;
+var
+  Args: TList<string>;
+  P: TProcess;
+  Output: string;
+  Lines: TList<string>;
+begin
+  Result := False;
+  if not FileExists(AExe) then
+  begin
+    AInfo := AExe + ' not found. Install asciidoctor, or set ' +
+             '"asciidoctor = <path>" in .luhmann.ini.';
+    Exit;
+  end;
+  Args := TList<string>.Create();
+  Args.Add('--version');
+  P := Launch(AExe, Args);
+  Output := TrimStr(DrainProcess(P));
+  if P.ExitCode <> 0 then
+  begin
+    AInfo := AExe + ' --version failed with exit status ' +
+             IntToStr(P.ExitCode) + '.' + FailureHint(P.ExitCode);
+    if Output <> '' then
+      AInfo := AInfo + ' Output: ' + Output;
+    Exit;
+  end;
+  Lines := SplitLines(Output);
+  if Lines.Count > 0 then
+    AInfo := TrimStr(Lines.Get(0))
+  else
+    AInfo := '';
+  Result := True;
 end;
 
 { ---- TFilesystemNoteRepository ---- }
@@ -207,7 +270,27 @@ var
 begin
   Args := TList<string>.Create();
   BuildRenderArgs(Args, ATempFile);
-  Result := RunCapture(FExe, Args);
+  Result := Finish(Launch(FExe, Args));
+end;
+
+{ Drain a launched render and return its HTML, or an error block when the
+  process failed. Stderr shares the pipe, so the output explains the failure. }
+function TAsciidoctorRenderer.Finish(P: TProcess): string;
+var
+  Output: string;
+begin
+  Output := DrainProcess(P);
+  if P.ExitCode = 0 then
+  begin
+    Result := Output;
+    Exit;
+  end;
+  Result := '<div class="luh-render-error"><p><strong>Rendering failed:</strong> ' +
+            HtmlEscape(FExe) + ' exited with status ' + IntToStr(P.ExitCode) +
+            '.' + HtmlEscape(FailureHint(P.ExitCode)) + '</p>';
+  if TrimStr(Output) <> '' then
+    Result := Result + '<pre>' + HtmlEscape(Output) + '</pre>';
+  Result := Result + '</div>';
 end;
 
 function TAsciidoctorRenderer.Render(const ASource: string): string;
@@ -219,25 +302,6 @@ begin
   TempFile := FTempDir + '/render.adoc';
   WriteFile(TempFile, ASource);
   Result := RenderFile(TempFile);
-end;
-
-{ Drain a started child process to EOF, then reap it. (Same loop as
-  RunCapture, but on an already-launched TProcess.) }
-function DrainProcess(P: TProcess): string;
-var
-  Chunk: string;
-  SB: TStringBuilder;
-begin
-  SB := TStringBuilder.Create();
-  while True do
-  begin
-    Chunk := P.ReadOutput();
-    if Chunk = '' then
-      Break;
-    SB.Append(Chunk);
-  end;
-  P.WaitOnExit();
-  Result := SB.ToString();
 end;
 
 procedure TAsciidoctorRenderer.RenderMany(ASources: TList<string>;
@@ -277,7 +341,7 @@ begin
     for J := 0 to Procs.Count - 1 do
     begin
       P := Procs[J];
-      AHtmls.Add(DrainProcess(P));
+      AHtmls.Add(Finish(P));
     end;
     Base := Base + K;
   end;
