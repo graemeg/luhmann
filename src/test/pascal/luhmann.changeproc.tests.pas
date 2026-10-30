@@ -31,7 +31,7 @@ type
 
   TFakeIndex = class(ISearchIndex)
   public
-    Upserts, Removes, Clears: Integer;
+    Upserts, Removes, Clears: Int;
     procedure Upsert(ANote: TNote);
     procedure Remove(const AId: string);
     procedure Clear;
@@ -40,7 +40,7 @@ type
 
   TCountReload = class(IReloadNotifier)
   public
-    Count: Integer;
+    Count: Int;
     procedure NotifyReload;
   end;
 
@@ -76,7 +76,7 @@ end;
 
 function TFakeRepo.ListNoteIds: TList<string>;
 var
-  i: Integer;
+  i: Int;
 begin
   Result := TList<string>.Create();
   for i := 0 to Sources.Count - 1 do
@@ -110,7 +110,7 @@ end;
 
 procedure TFakeRenderer.RenderMany(ASources: TList<string>; AHtmls: TList<string>);
 var
-  i: Integer;
+  i: Int;
 begin
   AHtmls.Clear();
   for i := 0 to ASources.Count - 1 do

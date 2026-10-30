@@ -31,12 +31,12 @@ type
   public
     RootDir:    string;
     LuhmannDir: string;
-    Port:       Integer;
+    Port:       Int;
     Bind:       string;    { dotted-quad listen address; 127.0.0.1 by default }
     Editor:     string;
     CatchAll:   string;
     Asciidoctor: string;
-    RenderJobs: Integer;   { parallel asciidoctor processes during the build }
+    RenderJobs: Int;   { parallel asciidoctor processes during the build }
     constructor Create(const ARootDir: string);
     { Apply overrides from '<root>/.luhmann.ini' if it exists. Returns True if
       a config file was found and applied, False if defaults were used. }
@@ -137,7 +137,7 @@ function TConfig.LoadOverrides: Boolean;
 var
   Path, Content, Line, Key, Val: string;
   Lines: TList<string>;
-  I, Eq: Integer;
+  I, Eq: Int;
 begin
   Path := ConfigPath();
   if not FileExists(Path) then

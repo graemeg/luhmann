@@ -15,8 +15,8 @@
 # Environment:
 #   BLAISE_REPO     compiler checkout (default /data/devel/new-pascal-compiler
 #                   on Linux, ~/devel/blaise on macOS)
-#   BLAISE_VERSION  release under $BLAISE_REPO/releases (default v0.14.0 on
-#                   Linux, v0.15.0-pre on macOS -- the first arm64 release)
+#   BLAISE_VERSION  release under $BLAISE_REPO/releases (default v0.15.0, the
+#                   first with the Int and Int32 type names)
 #   BLAISE          full path to a compiler binary; overrides the two above
 #   BLZ_CACHE       unit cache directory (default /tmp/luhmann-blzcache-<target>)
 set -euo pipefail
@@ -28,8 +28,8 @@ case "${1:-}" in
 esac
 
 case "$(uname -s)" in
-  Darwin) DEF_REPO="$HOME/devel/blaise";            DEF_VERSION="v0.15.0-pre" ;;
-  *)      DEF_REPO="/data/devel/new-pascal-compiler"; DEF_VERSION="v0.14.0" ;;
+  Darwin) DEF_REPO="$HOME/devel/blaise";            DEF_VERSION="v0.15.0" ;;
+  *)      DEF_REPO="/data/devel/new-pascal-compiler"; DEF_VERSION="v0.15.0" ;;
 esac
 R="${BLAISE_REPO:-$DEF_REPO}"
 BLAISE="${BLAISE:-$R/releases/${BLAISE_VERSION:-$DEF_VERSION}/blaise}"

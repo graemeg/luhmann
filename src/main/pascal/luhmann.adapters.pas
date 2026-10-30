@@ -44,11 +44,11 @@ type
   private
     FExe:         string;
     FTempDir:     string;
-    FConcurrency: Integer;
+    FConcurrency: Int;
     function RenderFile(const ATempFile: string): string;
     function Finish(P: TProcess): string;
   public
-    constructor Create(const AExe, ATempDir: string; AConcurrency: Integer);
+    constructor Create(const AExe, ATempDir: string; AConcurrency: Int);
     function Render(const ASource: string): string;
     procedure RenderMany(ASources: TList<string>; AHtmls: TList<string>);
   end;
@@ -85,7 +85,7 @@ uses
 
 { The logger writes diagnostic lines to stderr (fd 2). That is process I/O, not
   networking, so it uses a local write(2) binding rather than Net.Sockets. }
-function c_write(AFd: Integer; ABuf: Pointer; ACount: Int64): Int64;
+function c_write(AFd: Int32; ABuf: Pointer; ACount: Int64): Int64;
   external name 'write';
 
 { ---- helpers ---- }
@@ -114,7 +114,7 @@ end;
 { Launch AExe with AArgs; return the started process (caller drains it). }
 function Launch(const AExe: string; AArgs: TList<string>): TProcess;
 var
-  I: Integer;
+  I: Int;
 begin
   Result := TProcess.Create(nil);
   Result.Executable := AExe;
@@ -129,7 +129,7 @@ begin
 end;
 
 { Exit status 127 is what the child reports when exec itself failed. }
-function FailureHint(AExitCode: Integer): string;
+function FailureHint(AExitCode: Int): string;
 begin
   if AExitCode = 127 then
     Result := ' It could not be started: check that asciidoctor is installed, ' +
@@ -192,7 +192,7 @@ var
   Args: TList<string>;
   Lines: TList<string>;
   Raw, Ln: string;
-  I, Prefix: Integer;
+  I, Prefix: Int;
 begin
   Result := TList<string>.Create();
   { find <root> -path <root>/.luhmann -prune -o -type f -name '*.adoc' -print
@@ -239,7 +239,7 @@ end;
 { ---- TAsciidoctorRenderer ---- }
 
 constructor TAsciidoctorRenderer.Create(const AExe, ATempDir: string;
-  AConcurrency: Integer);
+  AConcurrency: Int);
 begin
   if AExe = '' then
     FExe := '/usr/bin/asciidoctor'
@@ -307,7 +307,7 @@ end;
 procedure TAsciidoctorRenderer.RenderMany(ASources: TList<string>;
   AHtmls: TList<string>);
 var
-  N, Base, K, J, SlotFile: Integer;
+  N, Base, K, J, SlotFile: Int;
   Procs: TList<TProcess>;
   P: TProcess;
   TempFile: string;
@@ -358,7 +358,7 @@ function TProcessEditorLauncher.LaunchEditor(const AAbsPath: string): Boolean;
 var
   Parts: TList<string>;
   P: TProcess;
-  I: Integer;
+  I: Int;
 begin
   if FCommand = '' then
   begin

@@ -58,7 +58,7 @@ type
     function TagsOfNote(const AId: string): TList<string>;
     function AllTags: TList<string>;
     function NotesForTag(const ATag: string): TList<string>;
-    function TagCount(const ATag: string): Integer;
+    function TagCount(const ATag: string): Int;
     function HasNote(const AId: string): Boolean;
 
     { Every real note id, in insertion order. Fresh caller-owned list. }
@@ -103,7 +103,7 @@ var
   Title, BaseDir: string;
   Tags, Links: TList<string>;
   Note: TNote;
-  I: Integer;
+  I: Int;
 begin
   Title := ExtractTitle(ASource);
   if Title = '' then
@@ -146,7 +146,7 @@ end;
 procedure TChangeProcessor.BuildAll;
 var
   Ids, Sources, Htmls: TList<string>;
-  I: Integer;
+  I: Int;
   Id: string;
   TStart, TEnd, ElapsedMs: Int64;
 begin
@@ -243,7 +243,7 @@ begin
   Result := FTags.NotesWithTag(ATag);
 end;
 
-function TChangeProcessor.TagCount(const ATag: string): Integer;
+function TChangeProcessor.TagCount(const ATag: string): Int;
 begin
   Result := FTags.CountForTag(ATag);
 end;
@@ -255,7 +255,7 @@ end;
 
 function TChangeProcessor.AllNoteIds: TList<string>;
 var
-  I: Integer;
+  I: Int;
 begin
   Result := TList<string>.Create();
   for I := 0 to FHtml.Count - 1 do
@@ -265,7 +265,7 @@ end;
 procedure TChangeProcessor.FindBrokenLinks(ASources, ATargets: TList<string>);
 var
   Ids, OutL: TList<string>;
-  I, J: Integer;
+  I, J: Int;
   Id, Target: string;
 begin
   ASources.Clear();

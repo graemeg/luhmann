@@ -72,7 +72,7 @@ end;
 procedure TPollingWatcher.Prime;
 var
   Ids: TList<string>;
-  I: Integer;
+  I: Int;
   Id: string;
 begin
   Ids := FPorts.Repo.ListNoteIds();
@@ -89,7 +89,7 @@ end;
 function TPollingWatcher.Poll: TChangeSet;
 var
   Ids, Current: TList<string>;
-  I: Integer;
+  I: Int;
   Id: string;
   Mt, OldMt: Int64;
 begin

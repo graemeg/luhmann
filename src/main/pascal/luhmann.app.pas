@@ -96,7 +96,7 @@ procedure TLuhmannApp.ServeNotePage(const AId: string; AResponse: THttpResponse)
 var
   Body, Title: string;
   BacklinkIds, BacklinkTitles, Tags: TList<string>;
-  I: Integer;
+  I: Int;
 begin
   if not FProc.HasNote(AId) then
   begin
@@ -166,7 +166,7 @@ var
   Q: string;
   Hits: TSearchHitList;
   Ids, Titles, Snips: TList<string>;
-  I: Integer;
+  I: Int;
   Hit: TSearchHit;
 begin
   Q := ARequest.QueryParam('q');
@@ -191,7 +191,7 @@ end;
 procedure TLuhmannApp.ServeAllTags(AResponse: THttpResponse);
 var
   Tags: TList<string>;
-  I: Integer;
+  I: Int;
   Tag, Html: string;
 begin
   Tags := FProc.AllTags();
@@ -210,7 +210,7 @@ end;
 procedure TLuhmannApp.ServeTagList(const ATag: string; AResponse: THttpResponse);
 var
   Notes: TList<string>;
-  I: Integer;
+  I: Int;
   Id, Html: string;
 begin
   Notes := FProc.NotesForTag(ATag);
@@ -229,7 +229,7 @@ end;
 procedure TLuhmannApp.ServeBroken(AResponse: THttpResponse);
 var
   Sources, Targets: TList<string>;
-  I: Integer;
+  I: Int;
   Html: string;
 begin
   Sources := TList<string>.Create();
@@ -265,7 +265,7 @@ procedure WriteNode(W: TJSONWriter; AProc: TChangeProcessor; const AId: string;
   ACenter: Boolean);
 var
   Tags: TList<string>;
-  I: Integer;
+  I: Int;
 begin
   W.BeginObject();
   W.WriteString('id', AId);
@@ -286,7 +286,7 @@ var
   Note: string;
   W: TJSONWriter;
   OutL, InL, Seen: TList<string>;
-  I: Integer;
+  I: Int;
   Nbr: string;
 begin
   Note := ARequest.QueryParam('note');
@@ -353,7 +353,7 @@ procedure TLuhmannApp.ApiGraphAll(AResponse: THttpResponse);
 var
   W: TJSONWriter;
   Tags, Notes, OutE: TList<string>;
-  I, J: Integer;
+  I, J: Int;
   Id: string;
 begin
   { Build the whole-corpus graph by walking every note's out-links. }
@@ -409,7 +409,7 @@ var
   Note: string;
   W: TJSONWriter;
   Ids: TList<string>;
-  I: Integer;
+  I: Int;
   Id: string;
 begin
   Note := ARequest.QueryParam('note');
@@ -432,7 +432,7 @@ procedure TLuhmannApp.ApiTags(AResponse: THttpResponse);
 var
   W: TJSONWriter;
   Tags: TList<string>;
-  I: Integer;
+  I: Int;
   Tag: string;
 begin
   Tags := FProc.AllTags();

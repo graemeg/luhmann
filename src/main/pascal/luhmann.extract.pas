@@ -44,7 +44,7 @@ uses
 function ExtractTitle(const ASource: string): string;
 var
   Lines: TList<string>;
-  I: Integer;
+  I: Int;
   Ln: string;
 begin
   Result := '';
@@ -64,7 +64,7 @@ function ExtractTags(const ASource: string): TList<string>;
 var
   Lines: TList<string>;
   Parts: TList<string>;
-  I, J: Integer;
+  I, J: Int;
   Ln, Rest, Tag: string;
 begin
   Result := TList<string>.Create();
@@ -93,7 +93,7 @@ var
   Combined: string;
   Segs: TList<string>;
   Outp: TList<string>;
-  I: Integer;
+  I: Int;
   Seg: string;
 begin
   if StartsStr('/', ATarget) then
@@ -124,9 +124,9 @@ end;
 { Scan for a macro of the form NAME:TARGET[...] starting at byte position
   APos (which must point just past the "NAME:"). Returns the TARGET (up to the
   '[') and sets ANextPos past the macro, or '' if malformed. }
-function ReadMacroTarget(const S: string; APos: Integer; var ANextPos: Integer): string;
+function ReadMacroTarget(const S: string; APos: Int; var ANextPos: Int): string;
 var
-  I, N: Integer;
+  I, N: Int;
   Ch: Byte;
 begin
   Result := '';
@@ -154,7 +154,7 @@ end;
 
 procedure ScanMacro(const ASource, AMacro, ABaseDir: string; AResult: TList<string>);
 var
-  Pos0, MacroLen, Next: Integer;
+  Pos0, MacroLen, Next: Int;
   Target, NoteId: string;
 begin
   MacroLen := Length(AMacro);

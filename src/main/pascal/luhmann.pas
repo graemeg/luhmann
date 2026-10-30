@@ -49,7 +49,7 @@ end;
 
 procedure ApplyChanges(AProc: TChangeProcessor; ACS: TChangeSet);
 var
-  I: Integer;
+  I: Int;
 begin
   for I := 0 to ACS.Created.Count - 1 do
     AProc.OnUpsert(ACS.Created.Get(I));
@@ -69,7 +69,7 @@ var
   App: TLuhmannApp;
   Handler: IRequestHandler;
   CS: TChangeSet;
-  PollCounter: Integer;
+  PollCounter: Int;
   HadConfig: Boolean;
 
 begin

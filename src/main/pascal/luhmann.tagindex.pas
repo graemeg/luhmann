@@ -42,7 +42,7 @@ type
     function TagsOf(const ANoteId: string): TList<string>;
 
     { Number of notes carrying a tag (0 if unknown). }
-    function CountForTag(const ATag: string): Integer;
+    function CountForTag(const ATag: string): Int;
 
     procedure Clear;
   end;
@@ -75,7 +75,7 @@ end;
 
 procedure TTagIndex.RemoveFromList(AList: TList<string>; const AValue: string);
 var
-  Idx: Integer;
+  Idx: Int;
 begin
   if AList = nil then
     Exit;
@@ -87,7 +87,7 @@ end;
 procedure TTagIndex.DetachNote(const ANoteId: string);
 var
   OldTags, Notes: TList<string>;
-  I: Integer;
+  I: Int;
   Tag: string;
 begin
   if not FNoteToTags.TryGetValue(ANoteId, OldTags) then
@@ -104,7 +104,7 @@ end;
 procedure TTagIndex.SetTags(const ANoteId: string; ATags: TList<string>);
 var
   NoteTags, Notes: TList<string>;
-  I: Integer;
+  I: Int;
   Tag: string;
   HasAny: Boolean;
 begin
@@ -150,7 +150,7 @@ end;
 
 function TTagIndex.AllTags: TList<string>;
 var
-  I: Integer;
+  I: Int;
 begin
   Result := TList<string>.Create();
   for I := 0 to FTagToNotes.Count - 1 do
@@ -160,7 +160,7 @@ end;
 function TTagIndex.NotesWithTag(const ATag: string): TList<string>;
 var
   Notes: TList<string>;
-  I: Integer;
+  I: Int;
 begin
   Result := TList<string>.Create();
   if FTagToNotes.TryGetValue(ATag, Notes) then
@@ -171,7 +171,7 @@ end;
 function TTagIndex.TagsOf(const ANoteId: string): TList<string>;
 var
   Tags: TList<string>;
-  I: Integer;
+  I: Int;
 begin
   Result := TList<string>.Create();
   if FNoteToTags.TryGetValue(ANoteId, Tags) then
@@ -179,7 +179,7 @@ begin
       Result.Add(Tags[I]);
 end;
 
-function TTagIndex.CountForTag(const ATag: string): Integer;
+function TTagIndex.CountForTag(const ATag: string): Int;
 var
   Notes: TList<string>;
 begin

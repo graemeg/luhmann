@@ -38,7 +38,7 @@ type
   public
     Id:          string;
     Title:       string;
-    Score:       Double;
+    Score:       Float;
     SummaryHtml: string;
     constructor Create;
   end;
@@ -49,13 +49,13 @@ type
   TSearchHitList = class
   private
     FItems: TList<TSearchHit>;
-    function GetItem(AIndex: Integer): TSearchHit;
-    function GetCount: Integer;
+    function GetItem(AIndex: Int): TSearchHit;
+    function GetCount: Int;
   public
     constructor Create;
     procedure Add(AHit: TSearchHit);
-    property Items[AIndex: Integer]: TSearchHit read GetItem; default;
-    property Count: Integer read GetCount;
+    property Items[AIndex: Int]: TSearchHit read GetItem; default;
+    property Count: Int read GetCount;
   end;
 
 { Map a source path to a rendered output path: foo/bar.adoc -> foo/bar.html.
@@ -98,12 +98,12 @@ begin
   FItems.Add(AHit);
 end;
 
-function TSearchHitList.GetItem(AIndex: Integer): TSearchHit;
+function TSearchHitList.GetItem(AIndex: Int): TSearchHit;
 begin
   Result := FItems[AIndex];
 end;
 
-function TSearchHitList.GetCount: Integer;
+function TSearchHitList.GetCount: Int;
 begin
   Result := FItems.Count;
 end;

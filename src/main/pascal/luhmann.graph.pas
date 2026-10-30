@@ -76,7 +76,7 @@ end;
 
 procedure TLinkGraph.RemoveFromList(AList: TList<string>; const AValue: string);
 var
-  Idx: Integer;
+  Idx: Int;
 begin
   if AList = nil then
     Exit;
@@ -88,7 +88,7 @@ end;
 procedure TLinkGraph.ClearOutEdgesOf(const AFrom: string);
 var
   Old, InList: TList<string>;
-  I: Integer;
+  I: Int;
   Target: string;
 begin
   if not FOut.TryGetValue(AFrom, Old) then
@@ -106,7 +106,7 @@ end;
 procedure TLinkGraph.SetOutLinks(const AFrom: string; ATargets: TList<string>);
 var
   OutList, InList: TList<string>;
-  I: Integer;
+  I: Int;
   Target: string;
 begin
   EnsureKey(FOut, AFrom);
@@ -138,7 +138,7 @@ end;
 function TLinkGraph.BacklinksOf(const AId: string): TList<string>;
 var
   Src: TList<string>;
-  I: Integer;
+  I: Int;
 begin
   Result := TList<string>.Create();
   if FIn.TryGetValue(AId, Src) then
@@ -149,7 +149,7 @@ end;
 function TLinkGraph.OutLinksOf(const AId: string): TList<string>;
 var
   Src: TList<string>;
-  I: Integer;
+  I: Int;
 begin
   Result := TList<string>.Create();
   if FOut.TryGetValue(AId, Src) then

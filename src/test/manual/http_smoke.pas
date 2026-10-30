@@ -14,7 +14,7 @@ end;
 var
   Srv: THttpServer;
   H: IRequestHandler;
-  i: Integer;
+  i: Int;
 begin
   Srv := THttpServer.Create(19097);
   if not Srv.Start() then begin WriteLn('start failed'); Halt(1) end;

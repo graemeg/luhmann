@@ -26,7 +26,7 @@ type
   TPosting = class
   public
     NoteId: string;
-    Freq:   Integer;
+    Freq:   Int;
     constructor Create(const AId: string);
   end;
 
@@ -80,7 +80,7 @@ end;
 function HtmlToText(const AHtml: string): string;
 var
   SB: TStringBuilder;
-  I, N: Integer;
+  I, N: Int;
   InTag: Boolean;
   B: Byte;
 begin
@@ -108,7 +108,7 @@ end;
 function Tokenise(const AText: string): TList<string>;
 var
   SB: TStringBuilder;
-  I, N: Integer;
+  I, N: Int;
   B: Byte;
   Tok: string;
 begin
@@ -162,7 +162,7 @@ end;
 
 procedure TInMemorySearchIndex.RemovePostingsFor(const AId: string);
 var
-  I, J: Integer;
+  I, J: Int;
   Plist: TList<TPosting>;
   P: TPosting;
 begin
@@ -187,7 +187,7 @@ procedure TInMemorySearchIndex.AddTerm(const ATerm, AId: string);
 var
   Plist: TList<TPosting>;
   P, Found: TPosting;
-  I: Integer;
+  I: Int;
 begin
   if not FTerms.TryGetValue(ATerm, Plist) then
   begin
@@ -216,7 +216,7 @@ procedure TInMemorySearchIndex.Upsert(ANote: TNote);
 var
   Text, BodyText: string;
   Toks: TList<string>;
-  I: Integer;
+  I: Int;
 begin
   RemovePostingsFor(ANote.Id);
 
@@ -250,7 +250,7 @@ function TInMemorySearchIndex.Snippet(const ABody: string;
   AQueryTerms: TList<string>): string;
 var
   Lower: string;
-  I, Pos0, Start, Stop: Integer;
+  I, Pos0, Start, Stop: Int;
   Term: string;
 begin
   Lower := LowerStr(ABody);
@@ -294,7 +294,7 @@ end;
 procedure ParseQueryTerms(const AQuery: string; ATerms, AModes: TList<string>);
 var
   Pieces, Toks: TList<string>;
-  I: Integer;
+  I: Int;
   Piece: string;
   Sub: Boolean;
 begin
@@ -320,12 +320,12 @@ end;
 function TInMemorySearchIndex.Search(const AQuery: string): TSearchHitList;
 var
   Terms, Modes: TList<string>;
-  Scores: TOrderedDictionary<string, Integer>;
-  I, J, K, Sc, BestIdx, BestScore, IdxTerm: Integer;
+  Scores: TOrderedDictionary<string, Int>;
+  I, J, K, Sc, BestIdx, BestScore, IdxTerm: Int;
   Term, Id, Body, Title: string;
   Plist: TList<TPosting>;
   P: TPosting;
-  Cur: Integer;
+  Cur: Int;
   Used: TList<string>;
   Hit: TSearchHit;
   WantSub, Matched: Boolean;
@@ -344,7 +344,7 @@ begin
     Exit;
   end;
 
-  Scores := TOrderedDictionary<string, Integer>.Create();
+  Scores := TOrderedDictionary<string, Int>.Create();
   for I := 0 to Terms.Count - 1 do
   begin
     Term := Terms.Get(I);

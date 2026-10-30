@@ -33,7 +33,7 @@ function TrimStr(const S: string): string;
 function LowerStr(const S: string): string;
 
 { 0-based index of ASub in S at or after AFrom, or -1 if not found. }
-function PosFrom(const ASub, S: string; AFrom: Integer): Integer;
+function PosFrom(const ASub, S: string; AFrom: Int): Int;
 
 { SplitChar / SplitLines / JoinList now live in the stdlib StrUtils unit. }
 
@@ -65,7 +65,7 @@ begin
   Result := LowerCase(S);
 end;
 
-function PosFrom(const ASub, S: string; AFrom: Integer): Integer;
+function PosFrom(const ASub, S: string; AFrom: Int): Int;
 begin
   if AFrom < 0 then
     AFrom := 0;
@@ -74,7 +74,7 @@ end;
 
 function DirOf(const APath: string): string;
 var
-  I: Integer;
+  I: Int;
 begin
   Result := '';
   for I := Length(APath) - 1 downto 0 do
@@ -90,7 +90,7 @@ var
   Stream: TFileInputStream;
   SB: TStringBuilder;
   Buf: array[0..8191] of Byte;
-  N, I: Integer;
+  N, I: Int;
 begin
   Result := '';
   if not FileExists(APath) then
@@ -109,7 +109,7 @@ end;
 function FindOnPath(const AName, APathList: string): string;
 var
   Dirs: TList<string>;
-  I: Integer;
+  I: Int;
   Dir: string;
 begin
   Result := '';

@@ -47,7 +47,7 @@ uses
 function HtmlEscape(const S: string): string;
 var
   SB: TStringBuilder;
-  I, N: Integer;
+  I, N: Int;
   B: Byte;
 begin
   SB := TStringBuilder.Create();
@@ -107,7 +107,7 @@ end;
 function RenderTagChips(ATags: TList<string>): string;
 var
   SB: TStringBuilder;
-  I: Integer;
+  I: Int;
   Tag: string;
 begin
   if (ATags = nil) or (ATags.Count = 0) then
@@ -130,7 +130,7 @@ end;
 function RenderBacklinks(AIds, ATitles: TList<string>): string;
 var
   SB: TStringBuilder;
-  I: Integer;
+  I: Int;
   Title: string;
 begin
   SB := TStringBuilder.Create();
@@ -185,7 +185,7 @@ function RenderSearchPage(const AQuery: string;
   AResultIds, AResultTitles, AResultSnippets: TList<string>): string;
 var
   SB: TStringBuilder;
-  I: Integer;
+  I: Int;
   Title, Snippet: string;
 begin
   SB := TStringBuilder.Create();
